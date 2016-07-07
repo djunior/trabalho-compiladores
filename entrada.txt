@@ -1,0 +1,37 @@
+program Entrada;
+
+globals :
+	integer x;
+	integer y;
+	string name;
+;
+
+functions :
+
+	locals :
+		integer aux;
+	;
+
+	local string endereco;
+
+	sum integer x, integer y : integer  => x + y;
+
+	max integer x, integer y : integer 
+	{
+		if x > y :
+			=> x;
+		else
+			=> y;
+	}
+
+	swap integer x, integer y : integer {
+		aux = y;
+		y = x;
+		x = aux;
+	}
+
+	init : {
+		x = 2;
+		y = 3;
+	} 
+;

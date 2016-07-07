@@ -1,0 +1,66 @@
+#Comentários iniciam com #
+
+#Inicio do programa
+program HelloWorld;
+
+#Os blocos são iniciados com { e fechados com }
+
+#Bloco de variáveis globais
+global {
+
+	int x = 5, y = 10, resultado;
+
+}
+
+# Bloco de funções
+function {
+
+	#
+	# Definição de uma função:
+	# 
+	# nome_da_função lista_de_tipos : valor_de_retorno corpo
+	# 
+	# A lista de tipos é definida como: tipo1 var1, var2; tipo2 var3, var4; ...
+	# O valor de retorno é apenas um tipo.
+	#
+	# O corpo retorna o valor usando o token =>. Se o corpo tiver apenas
+	# uma linha, ele pode ser passado sem os marcadores de inicio e fim de bloco { }
+	#
+
+	#Função com corpo com apenas uma linha
+	average int a, b : int => (a+b)/2;
+
+ 	#Função com corpo com apenas uma linha e if inline igual ao C
+	max int a, b : int => (a > b) ? a : b;
+
+	#Função com corpo com mais de uma linha e if - else igual ao C
+	fat int n : int {
+		if (n)
+			=> 1;
+		else
+			=> n*fat(n-1);
+	}
+
+	# Essa função não recebe parâmetros nem retorna nenhum valor;
+	print_result : {
+		print("Resultado:");
+		print(resultado); # resultado é global
+	}
+
+}
+
+#Bloco que é executado no inicio do programa
+main : {
+
+	clear();
+
+	int sum = x + y;
+
+	int f = fat(sum);
+
+	int m = max(x,y);
+
+	resultado = average(f,m);
+
+	print_result(a);
+}
