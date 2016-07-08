@@ -1,37 +1,50 @@
 program Entrada;
 
-globals :
+globals {
 	integer x;
 	integer y;
 	string name;
-;
+}
 
-functions :
+locals {
+	integer aux;
+}
 
-	locals :
-		integer aux;
-	;
+local string endereco;
 
-	local string endereco;
+sum integer x, integer y : integer  
+	<= x + y;
 
-	sum integer x, integer y : integer  => x + y;
+max integer x, integer y : integer 
+{
+	if x > y :
+		<= x;
+	else
+		<= y;
+}
 
-	max integer x, integer y : integer 
+swap integer x, integer y : integer {
+	aux = y;
+	y = x;
+	x = aux;
+}
+
+init : {
+	x = 2;
+	y = 3;
+} 
+
+fat integer x: integer {
+	local integer result = 1;
+	while x > 0: 
 	{
-		if x > y :
-			=> x;
-		else
-			=> y;
+		result = result + x;
+		x = x - 1;
 	}
+	<= result;
+}
 
-	swap integer x, integer y : integer {
-		aux = y;
-		y = x;
-		x = aux;
-	}
-
-	init : {
-		x = 2;
-		y = 3;
-	} 
-;
+count integer n: {
+	for integer i, i < n, i = i + 1 :
+		i = 1;
+}

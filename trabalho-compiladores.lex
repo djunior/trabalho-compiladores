@@ -1,4 +1,5 @@
-WS      [\t\n ]
+WS      [\t ]
+BR		"\n"
 DIGITO  [0-9]
 LETRA   [A-Za-z_]
 ID      {LETRA}({LETRA}|{DIGITO})*
@@ -17,6 +18,7 @@ GLOBAL		global
 GLOBALS 	globals
 LOCAL		local
 LOCALS 		locals
+WHILE		while
 
 CTE_STRING	"'"([^'\n]|"''")*"'"
 CTE_INTEGER {DIGITO}+
@@ -24,6 +26,8 @@ CTE_INTEGER {DIGITO}+
 %%
 
 {WS} {}
+{BR} { yylineno++; }
+
 
 {PROGRAM} 	{ yylval = yytext; return _PROGRAM; }
 {WRITELN} 	{ yylval = yytext; return _WRITELN; }
@@ -39,11 +43,12 @@ CTE_INTEGER {DIGITO}+
 {GLOBALS}	{ yylval = yytext; return _GLOBALS; }
 {LOCAL}		{ yylval = yytext; return _LOCAL; }
 {LOCALS}	{ yylval = yytext; return _LOCALS; }
+{WHILE}		{ yylval = yytext; return _WHILE; }
 
 {CTE_STRING} 	{ yylval = yytext; return _CTE_STRING; }
 {CTE_INTEGER} 	{ yylval = yytext; return _CTE_INTEGER; }
 
-"=>"		{ yylval = yytext; return _RETURN; }
+"<="		{ yylval = yytext; return _RETURN; }
 "="			{ yylval = yytext; return _ATRIB; }
 
 {ID}  { yylval = yytext; return _ID; }
