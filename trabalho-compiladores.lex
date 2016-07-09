@@ -1,3 +1,7 @@
+%{
+int yyrowno = 1;
+void trata_folha();
+%}
 WS      [\t ]
 BR		"\n"
 DIGITO  [0-9]
@@ -19,43 +23,55 @@ GLOBALS 	globals
 LOCAL		local
 LOCALS 		locals
 WHILE		while
+MAIN        main
 
-CTE_STRING	"'"([^'\n]|"''")*"'"
+CTE_STRING	"\""([^\"\n]|"\"\"")*"\""
 CTE_INTEGER {DIGITO}+
 
 %%
+
+void trata_folha();
 
 {WS} {}
 {BR} { yylineno++; }
 
 
-{PROGRAM} 	{ yylval = yytext; return _PROGRAM; }
-{WRITELN} 	{ yylval = yytext; return _WRITELN; }
-{WRITE} 	{ yylval = yytext; return _WRITE; }
-{STRING} 	{ yylval = yytext; return _STRING; }
-{INTEGER} 	{ yylval = yytext; return _INTEGER; }
-{VAR} 		{ yylval = yytext; return _VAR; }
-{IF} 		{ yylval = yytext; return _IF; }
-{ELSE} 		{ yylval = yytext; return _ELSE; }
-{FOR} 		{ yylval = yytext; return _FOR; }
-{FUNCTION}  { yylval = yytext; return _FUNCTION; }
-{GLOBAL}	{ yylval = yytext; return _GLOBAL; }
-{GLOBALS}	{ yylval = yytext; return _GLOBALS; }
-{LOCAL}		{ yylval = yytext; return _LOCAL; }
-{LOCALS}	{ yylval = yytext; return _LOCALS; }
-{WHILE}		{ yylval = yytext; return _WHILE; }
+{PROGRAM} 	{ trata_folha(); return _PROGRAM; }
+{WRITELN} 	{ trata_folha(); return _WRITELN; }
+{WRITE} 	{ trata_folha(); return _WRITE; }
+{STRING} 	{ trata_folha(); return _STRING; }
+{INTEGER} 	{ trata_folha(); return _INTEGER; }
+{VAR} 		{ trata_folha(); return _VAR; }
+{IF} 		{ trata_folha(); return _IF; }
+{ELSE} 		{ trata_folha(); return _ELSE; }
+{FOR} 		{ trata_folha(); return _FOR; }
+{MAIN}      { trata_folha(); return _MAIN; }
+{FUNCTION}  { trata_folha(); return _FUNCTION; }
+{GLOBAL}	{ trata_folha(); return _GLOBAL; }
+{GLOBALS}	{ trata_folha(); return _GLOBALS; }
+{LOCAL}		{ trata_folha(); return _LOCAL; }
+{LOCALS}	{ trata_folha(); return _LOCALS; }
+{WHILE}		{ trata_folha(); return _WHILE; }
 
-{CTE_STRING} 	{ yylval = yytext; return _CTE_STRING; }
-{CTE_INTEGER} 	{ yylval = yytext; return _CTE_INTEGER; }
+{CTE_STRING} 	{ trata_folha(); return _CTE_STRING; }
+{CTE_INTEGER} 	{ trata_folha(); return _CTE_INTEGER; }
 
-"<="		{ yylval = yytext; return _RETURN; }
-"="			{ yylval = yytext; return _ATRIB; }
+"<="		{ trata_folha(); return _RETURN; }
+"="			{ trata_folha(); return _ATRIB; }
 
-{ID}  { yylval = yytext; return _ID; }
+{ID}  { trata_folha(); return _ID; }
 
-.     { yylval = yytext; return yytext[0]; }
+.     { trata_folha(); return yytext[0]; }
 
 %%
+
+void trata_folha() {
+  yylval.v = yytext;
+  yylval.t = "";
+  yylval.c = "";
+  
+  yyrowno += strlen( yytext ); 
+}
 
  
 
