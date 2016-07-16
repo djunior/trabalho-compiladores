@@ -32,8 +32,8 @@ CTE_INTEGER {DIGITO}+
 
 void trata_folha();
 
-{WS} {}
-{BR} { yylineno++; }
+{WS} { yyrowno += 1; }
+{BR} { yylineno++; yyrowno = 1; }
 
 
 {PROGRAM} 	{ trata_folha(); return _PROGRAM; }
@@ -67,10 +67,14 @@ void trata_folha();
 
 void trata_folha() {
   yylval.v = yytext;
-  yylval.t = "";
+  yylval.t.nome = "";
+  yylval.t.decl = "";
+  yylval.t.fmt = "";
   yylval.c = "";
+  yylval.lst.clear();
   
-  yyrowno += strlen( yytext ); 
+  yyrowno += strlen( yytext );
+
 }
 
  

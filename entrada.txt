@@ -2,40 +2,39 @@ program Entrada;
 
 globals {
 	integer x;
+	integer a;
 	integer y;
 	string name;
 }
 
-sum integer x, integer y : integer  
-	<= x + y;
+sum integer x1, integer y1 : integer  
+	<= x1 + y1;
 
-max integer x, integer y : integer 
+max integer x2, integer y2 : integer 
 {
-	if x > y :
-		<= x;
+	if x2 > y2 :
+		<= x2;
 	else
-		<= y;
+		<= y2;
 }
 
-swap integer x, integer y : integer {
-	aux = y;
-	y = x;
+swap integer x3, integer y3 : integer {
+	local integer aux;
+	aux = y3;
+	y = x3;
 	x = aux;
 }
 
-init : {
-	x = 2;
-	y = 3;
-} 
 
-fat integer x: integer {
-	local integer result = 1;
-	while x > 0: 
+fat integer x4: integer {
+	local integer result1;
+	result1 = 1;
+	while x4 > 0: 
 	{
-		result = result + x;
-		x = x - 1;
+		result1 = result1 + x4;
+		x4 = x4 - 1;
 	}
-	<= result;
+	<= result1;
 }
 
 count integer n: {
@@ -44,7 +43,8 @@ count integer n: {
 }
 
 main : {
-local integer result = 1;
+local integer result;
+result = 1;
 writeln("Teste");
 write(3);
 if 1<3 :
