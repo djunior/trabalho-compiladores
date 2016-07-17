@@ -42,6 +42,14 @@ count integer n: {
 		i = 1;
 }
 
+inc integer x5: {
+	x5 = x5 + 1;
+}
+
+clear: {
+	
+}
+
 main : {
 local integer result;
 result = 1;

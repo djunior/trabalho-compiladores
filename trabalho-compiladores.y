@@ -139,16 +139,17 @@ BODY_ELEMENT : GLOBAL_BLOCK
 
 GLOBAL_BLOCK : _GLOBALS '{' DECLARATIONS '}' { $$.c = $3.c + "\n"; }
 			 | _GLOBAL DECLARATION ';' { $$ = $2; }
-	   		 ;
+	   	 ;
 
 LOCAL_BLOCK : _LOCALS '{' DECLARATIONS '}' {$$.c = $3.c;}
 			| _LOCAL DECLARATION ';' {$$.c = $2.c;}
 			;
 
 FUNCTION : _ID PARAMETERS ':' TYPE BLOCK { $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + $5.c + "\n"; }
-		 | _ID PARAMETERS ':' BLOCK
-		 | _ID ':' TYPE BLOCK
-		 | _ID ':' BLOCK
+		 | _ID PARAMETERS ':' BLOCK { $$.c = "void " + $1.v + "(" + $2.c + ")" + $4.c + "\n"; }
+		 | _ID ':' TYPE BLOCK { $$.c = $3.t.decl + " " + $1.v + "( )" + $4.c + "\n"; }
+		 | _ID ':' BLOCK { $$.c = "void " + $1.v + "( )" + $3.c + "\n"; }
+     ;
 
 PARAMETERS : PARAMETER ',' PARAMETERS {$$.c = $1.c + ", " + $3.c;}
 		   | PARAMETER
@@ -226,7 +227,7 @@ CMD_ATTRIBUTION : LVALUE _ATRIB EXPRESSION { gera_codigo_atribuicao( $$, $1, $3 
 LVALUE : _ID { busca_tipo_da_variavel( $$, $1 ); }
        ; 
 
-CMD_RETURN : _RETURN EXPRESSION { $$.c = "return " + $2.v + ";";}
+CMD_RETURN : _RETURN EXPRESSION { $$.c = $2.v +  ";" + $2.c + "return " + $2.v + ";";}
 	   	   ;
 
 CMD_IF : _IF EXPRESSION ':' BLOCK {$$.c = "  if(" + $2.c + ")\n" + $4.c;}
@@ -236,7 +237,7 @@ CMD_IF : _IF EXPRESSION ':' BLOCK {$$.c = "  if(" + $2.c + ")\n" + $4.c;}
 CMD_WHILE : _WHILE EXPRESSION ':' BLOCK
 		  ;
 
-CMD_FOR : _FOR DECLARATION ',' EXPRESSION ',' CMD_ATTRIBUTION ':' BLOCK
+CMD_FOR : _FOR DECLARATION ',' EXPRESSION ',' CMD_ATTRIBUTION ':' BLOCK { $$.c = "for (\n  " + $2.c + "  " + $4.c + ";\n" + $6.c + ")\n" + $8.c;}
 		;
 
 %%
