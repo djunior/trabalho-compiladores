@@ -7,6 +7,7 @@ BR		"\n"
 DIGITO  [0-9]
 LETRA   [A-Za-z_]
 ID      {LETRA}({LETRA}|{DIGITO})*
+COMMENT "#"[^\n]*
 
 PROGRAM 	program
 WRITELN		writeln
@@ -32,6 +33,7 @@ CTE_INTEGER {DIGITO}+
 
 void trata_folha();
 
+{COMMENT} {yylineno++; yyrowno = 1;}
 {WS} { yyrowno += 1; }
 {BR} { yylineno++; yyrowno = 1; }
 

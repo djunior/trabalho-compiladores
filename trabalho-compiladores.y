@@ -18,7 +18,7 @@ Tipo Integer = { "integer", "int", "d" };
 Tipo Float =   { "float", "float", "f" };
 Tipo Double =  { "double", "double", "lf" };
 Tipo Boolean = { "boolean", "int", "d" };
-Tipo String =  { "string", "char[256]", "s" };
+Tipo String =  { "string", "char*", "s" };
 Tipo Char =    { "char", "char", "c" };
 
 struct Atributo {
@@ -38,15 +38,32 @@ map<string,Tipo> ts;
 map< string, map< string, Tipo > > tro; // tipo_resultado_operacao;
 
 ostream& operator << ( ostream& o, const vector<string>& st ) {
-  cout << "[ ";
+  o << "[ ";
   for( vector<string>::const_iterator itr = st.begin();
        itr != st.end(); ++itr )
-    cout << *itr << " "; 
+    o << *itr << " "; 
        
-  cout << "]";
+  o << "]";
   return o;     
 }
 
+ostream& operator << ( ostream& o, const Tipo& st ) {
+  o << "Tipo{";
+  o << "nome = " << st.nome;
+  o << ", decl = " << st.decl;
+  o << ", fmt = " << st.fmt;
+  o << "}";
+  return o;     
+}
+
+ostream& operator << ( ostream& o, const Atributo& st ) {
+  o << "Atributo{";
+  o << "v = " << st.v;
+  o << ", c = " << st.c;
+  o << ", t = " << st.t;
+  o << "}";
+  return o;     
+}
 
 // 'Atributo&': o '&' siginifica passar por referência (modifica).
 void declara_variavel( Atributo& ss, 
@@ -79,7 +96,11 @@ void gera_codigo_atribuicao( Atributo& ss,
                              const Atributo& s3 ) {
   if( s1.t.nome == s3.t.nome || 
       (s1.t.nome == Float.nome && s3.t.nome == Integer.nome ) ) {
+    cout << "gera_codigo_atribuicao:" << endl;
+    cout << "\ts1: " << s1 << endl;
+    cout << "\ts3: " << s3 << endl;
     ss.c = s1.c + s3.c + "  " + s1.v + " = " + s3.v + ";\n";
+    cout << "\tss: " << ss << endl;
   }
 }
 
@@ -93,9 +114,14 @@ void gera_codigo_operador( Atributo& ss,
                            const Atributo& s3 ) {
   if( tro.find( s2.v ) != tro.end() ) {
     if( tro[s2.v].find( par( s1.t, s3.t ) ) != tro[s2.v].end() ) {
-      ss.v = "t1"; // Precisa gerar um nome de variável temporária.
+      cout << "gera_codigo_operador:" << endl;
+      cout << "\ts1:" << s1 << endl;
+      cout << "\ts2:" << s2 << endl;
+      cout << "\ts3:" << s3 << endl;
       ss.t =  tro[s2.v][par( s1.t, s3.t )];
+      ss.v = "t1"; // Precisa gerar um nome de variável temporária.
       ss.c = s1.c + s3.c + "  " + ss.v + " = " + s1.v + s2.v + s3.v + ";\n";
+      cout << "\tss:" << ss << endl;
     }
     else
       erro( "O operador '" + s2.v + "' não está definido para os tipos " + s1.t.nome + " e " + s3.t.nome + "." );
@@ -183,7 +209,7 @@ MAIN : _MAIN ':' '{' CMDS '}'
             { $$.c = "int main() {\n" + $4.c + "}\n"; }
 
 BLOCK : '{' CMDS '}' { $$.c = "\n{\n" + $2.c + "\n}\n";}
-	  | CMD
+	  | CMD { $$.c = "{\n" + $1.c + "\n}\n";}
 	  ;
 
 CMDS : CMD CMDS { $$.c = $1.c + $2.c; }
@@ -230,7 +256,7 @@ LVALUE : _ID { busca_tipo_da_variavel( $$, $1 ); }
 CMD_RETURN : _RETURN EXPRESSION { $$.c = $2.v +  ";" + $2.c + "return " + $2.v + ";";}
 	   	   ;
 
-CMD_IF : _IF EXPRESSION ':' BLOCK {$$.c = "  if(" + $2.c + ")\n" + $4.c;}
+CMD_IF : _IF EXPRESSION ':' BLOCK {$$.c = "  if (" + $2.c + ")\n" + $4.c;}
 	   | _IF EXPRESSION ':' BLOCK _ELSE BLOCK {$$.c = "  if(" + $2.c + ")\n" + $4.c + "\n  else\n" + $6.c;}
 	   ;
 
