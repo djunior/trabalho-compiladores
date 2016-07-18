@@ -36,6 +36,7 @@ void erro( string );
 
 map<string,Tipo> ts;
 map< string, map< string, Tipo > > tro; // tipo_resultado_operacao;
+map<string,int> temp_global;
 
 ostream& operator << ( ostream& o, const vector<string>& st ) {
   o << "[ ";
@@ -63,6 +64,32 @@ ostream& operator << ( ostream& o, const Atributo& st ) {
   o << ", t = " << st.t;
   o << "}";
   return o;     
+}
+
+string toString(int n) {
+  char buff[256];
+  sprintf(buff,"%d",n);
+  return (string) buff;
+}
+
+string gera_nome_variavel(Tipo t, int n) {
+  return "t_" + t.nome + "_" + toString(n);
+}
+
+string gera_nome_variavel(Tipo t) {
+  return gera_nome_variavel(t,++temp_global[t.nome]);
+}
+
+string declara_nvar_temp( Tipo t, int n) {
+  string aux = "";
+  for (int i = 0; i < n; i++) {
+    aux = aux + t.decl + " " + gera_nome_variavel(t,i+1) + ";\n";
+  }
+  return aux;
+}
+
+string declara_var_temp ( map<string,int> &temp_map) {
+  return declara_nvar_temp(Integer, temp_map[Integer.nome]);
 }
 
 // 'Atributo&': o '&' siginifica passar por referência (modifica).
@@ -96,11 +123,11 @@ void gera_codigo_atribuicao( Atributo& ss,
                              const Atributo& s3 ) {
   if( s1.t.nome == s3.t.nome || 
       (s1.t.nome == Float.nome && s3.t.nome == Integer.nome ) ) {
-    cout << "gera_codigo_atribuicao:" << endl;
-    cout << "\ts1: " << s1 << endl;
-    cout << "\ts3: " << s3 << endl;
+    //cout << "gera_codigo_atribuicao:" << endl;
+    //cout << "\ts1: " << s1 << endl;
+    //cout << "\ts3: " << s3 << endl;
     ss.c = s1.c + s3.c + "  " + s1.v + " = " + s3.v + ";\n";
-    cout << "\tss: " << ss << endl;
+    //cout << "\tss: " << ss << endl;
   }
 }
 
@@ -114,14 +141,9 @@ void gera_codigo_operador( Atributo& ss,
                            const Atributo& s3 ) {
   if( tro.find( s2.v ) != tro.end() ) {
     if( tro[s2.v].find( par( s1.t, s3.t ) ) != tro[s2.v].end() ) {
-      cout << "gera_codigo_operador:" << endl;
-      cout << "\ts1:" << s1 << endl;
-      cout << "\ts2:" << s2 << endl;
-      cout << "\ts3:" << s3 << endl;
       ss.t =  tro[s2.v][par( s1.t, s3.t )];
-      ss.v = "t1"; // Precisa gerar um nome de variável temporária.
+      ss.v = gera_nome_variavel(ss.t); // Precisa gerar um nome de variável temporária.
       ss.c = s1.c + s3.c + "  " + ss.v + " = " + s1.v + s2.v + s3.v + ";\n";
-      cout << "\tss:" << ss << endl;
     }
     else
       erro( "O operador '" + s2.v + "' não está definido para os tipos " + s1.t.nome + " e " + s3.t.nome + "." );
@@ -147,7 +169,8 @@ void gera_codigo_operador( Atributo& ss,
 %%
 
 S : NAME BODY_BLOCK MAIN 
-  { cout << $1.c << $2.c << $3.c << endl; }
+  { cout << $1.c << declara_var_temp(temp_global)
+    << $2.c << $3.c << endl; }
   ;
    
 NAME : _PROGRAM _ID ';' 
@@ -189,9 +212,16 @@ DECLARATIONS : DECLARATION ';' DECLARATIONS {$$.c = $1.c + $3.c;}
 			 | DECLARATION ';'
 			 ;
 
-DECLARATION : TYPE IDS { declara_variavel( $$, $1, $2, 1 ); } 
-			| TYPE CMD_ATTRIBUTION {$$.c = $1.c + $2.c;}
-			;
+DECLARATION : TYPE IDS _ATRIB CTE_VAL 
+                { 
+                  declara_variavel($$, $1, $2, 1); 
+                  $2.t = $$.t;
+                  string aux = $$.c;
+                  gera_codigo_atribuicao($$,$2,$4);
+                  $$.c = aux + $$.c;
+                }
+            | TYPE IDS { declara_variavel( $$, $1, $2, 1 ); } 
+			      ;
 
 TYPE : _STRING  { $$.t = String; }
 	 | _INTEGER { $$.t = Integer; }
@@ -241,9 +271,12 @@ EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 );
 		   | F { $$ = $1; }
 		   ; 
 
-F : _ID          { busca_tipo_da_variavel( $$, $1 ); }
-  | _CTE_STRING  { $$ = $1; $$.t = String; }
-  | _CTE_INTEGER { $$ = $1; $$.t = Integer; }
+CTE_VAL : _CTE_STRING { $$ = $1; $$.t = String; }
+        | _CTE_INTEGER { $$ = $1; $$.t = Integer; }
+        ;
+
+F : _ID                   { busca_tipo_da_variavel( $$, $1 ); }
+  | CTE_VAL               { $$ = $1; }
   | '(' EXPRESSION ')'    { $$ = $2; }
   ;
 
