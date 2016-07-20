@@ -8,17 +8,22 @@
 
 using namespace std;
 
+struct Range {
+  int inicio, fim;
+};
+
 struct Tipo {
   string nome;  // O nome na sua linguagem
   string decl;  // A declaração correspondente em c-assembly
   string fmt;   // O formato para "printf"
+  vector<Range> dim;
 };
 
 Tipo Integer = { "integer", "int", "d" };
 Tipo Float =   { "float", "float", "f" };
 Tipo Double =  { "double", "double", "lf" };
 Tipo Boolean = { "boolean", "int", "d" };
-Tipo String =  { "string", "char*", "s" };
+Tipo String =  { "string", "char", "s" };
 Tipo Char =    { "char", "char", "c" };
 
 struct Atributo {
@@ -89,12 +94,23 @@ string declara_nvar_temp( Tipo t, int n) {
 }
 
 string declara_var_temp ( map<string,int> &temp_map) {
-  return declara_nvar_temp(Integer, temp_map[Integer.nome]);
+  string decl = declara_nvar_temp(Integer, temp_map[Integer.nome]);
+  temp_map.clear();
+  return decl;
+}
+
+string trata_dimensoes_decl_var( Tipo t ) {
+  string aux;
+  
+  for( int i = 0; i < t.dim.size(); i++ )
+    aux += "[" + toString( t.dim[i].fim - t.dim[i].inicio + 1 )+ "]";
+           
+  return aux;         
 }
 
 // 'Atributo&': o '&' siginifica passar por referência (modifica).
 void declara_variavel( Atributo& ss, 
-                       const Atributo& s1, const Atributo& s2, int tipo ) {
+                       const Atributo& s1, const Atributo& s2, const int tipo ) {
   ss.c = "";
   for( int i = 0; i < s2.lst.size(); i++ ) {
     if( ts.find( s2.lst[i] ) != ts.end() ) 
@@ -102,9 +118,9 @@ void declara_variavel( Atributo& ss,
     else {
       ts[ s2.lst[i] ] = s1.t;
       if (tipo == 1)
-          ss.c += s1.t.decl + " " + s2.lst[i] + ";\n"; 
+        ss.c += s1.t.decl + " " + s2.lst[i] + trata_dimensoes_decl_var( s1.t ) +";\n"; 
       else
-          ss.c += s1.t.decl + " " + s2.lst[i];
+        ss.c += s1.t.decl + " " + s2.lst[i];
     }  
   }
 }
@@ -126,7 +142,11 @@ void gera_codigo_atribuicao( Atributo& ss,
     //cout << "gera_codigo_atribuicao:" << endl;
     //cout << "\ts1: " << s1 << endl;
     //cout << "\ts3: " << s3 << endl;
-    ss.c = s1.c + s3.c + "  " + s1.v + " = " + s3.v + ";\n";
+    if (s1.t.nome == "string") {
+      ss.c = s1.c + s3.c + " " + " strcpy( " + s1.v + ", " + s3.v + " );\n";
+    } else {
+      ss.c = s1.c + s3.c + "  " + s1.v + " = " + s3.v + ";\n";
+    }
     //cout << "\tss: " << ss << endl;
   }
 }
@@ -143,7 +163,11 @@ void gera_codigo_operador( Atributo& ss,
     if( tro[s2.v].find( par( s1.t, s3.t ) ) != tro[s2.v].end() ) {
       ss.t =  tro[s2.v][par( s1.t, s3.t )];
       ss.v = gera_nome_variavel(ss.t); // Precisa gerar um nome de variável temporária.
-      ss.c = s1.c + s3.c + "  " + ss.v + " = " + s1.v + s2.v + s3.v + ";\n";
+      if (ss.t.nome == "string") {
+        ss.c = s1.c + s3.c + " " + "strcat( " + s1.v + ", " + s3.v + " );\n";
+      } else {
+        ss.c = s1.c + s3.c + "  " + ss.v + " = " + s1.v + s2.v + s3.v + ";\n";
+      }
     }
     else
       erro( "O operador '" + s2.v + "' não está definido para os tipos " + s1.t.nome + " e " + s3.t.nome + "." );
@@ -175,6 +199,7 @@ S : NAME BODY_BLOCK MAIN
    
 NAME : _PROGRAM _ID ';' 
        { $$.c = "#include <stdlib.h>\n"
+                "#include <string.h>\n"
                 "#include <stdio.h>\n\n";
        }              
      ;   
@@ -359,8 +384,15 @@ void inicializa_tabela_de_resultado_de_operacoes() {
   
 }
 
+void inicializa_tipos() {
+  Range r = { 0, 255 };
+  
+  String.dim.push_back( r );
+}
+
 int main( int argc, char* argv[] )
 {
+  inicializa_tipos();
   inicializa_tabela_de_resultado_de_operacoes();
   yyparse();
 }
