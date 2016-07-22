@@ -4,10 +4,35 @@ globals {
 	string a;
 }
 
+inc integer x: integer {
+	<= x + 1;
+}
+
+dec integer x: integer {
+	<= x - 1;
+}
+
 main : {
-	a = "hello" + ", world";
-	local integer x = 3;
+
+	a = "hello" + ", world " + " I'm here!";
+
+	locals {
+		integer x = 3;
+		integer y = 5;
+		integer z = 10;
+	}
+
 	x = x + 3;
-	local integer y = 5;
-	local integer z = 10;
+
+	write("x = ");
+	writeln(x);
+
+	write("y = ");
+	writeln(y);
+
+	write("z = ");
+	writeln(z);
+
+	write("a = ");
+	writeln(a);
 }

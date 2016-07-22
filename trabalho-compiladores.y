@@ -39,9 +39,12 @@ int yyparse();
 void yyerror(const char *);
 void erro( string );
 
-map<string,Tipo> ts;
+typedef map<string,Tipo> TabelaSimbolos;
+
 map< string, map< string, Tipo > > tro; // tipo_resultado_operacao;
 map<string,int> temp_global;
+
+vector< TabelaSimbolos > symbol_table_stack;
 
 ostream& operator << ( ostream& o, const vector<string>& st ) {
   o << "[ ";
@@ -85,20 +88,6 @@ string gera_nome_variavel(Tipo t) {
   return gera_nome_variavel(t,++temp_global[t.nome]);
 }
 
-string declara_nvar_temp( Tipo t, int n) {
-  string aux = "";
-  for (int i = 0; i < n; i++) {
-    aux = aux + t.decl + " " + gera_nome_variavel(t,i+1) + ";\n";
-  }
-  return aux;
-}
-
-string declara_var_temp ( map<string,int> &temp_map) {
-  string decl = declara_nvar_temp(Integer, temp_map[Integer.nome]);
-  temp_map.clear();
-  return decl;
-}
-
 string trata_dimensoes_decl_var( Tipo t ) {
   string aux;
   
@@ -108,30 +97,56 @@ string trata_dimensoes_decl_var( Tipo t ) {
   return aux;         
 }
 
+string declara_nvar_temp( Tipo t, int n) {
+  string aux = "";
+  for (int i = 0; i < n; i++) {
+    aux = aux + t.decl + " " + gera_nome_variavel(t,i+1) + trata_dimensoes_decl_var( t ) + ";\n";
+  }
+  return aux;
+}
+
+string declara_var_temp ( map<string,int> &temp_map) {
+  string decl = declara_nvar_temp(Integer, temp_map[Integer.nome]) + 
+                declara_nvar_temp(String, temp_map[String.nome]);;
+  temp_map.clear();
+  return decl;
+}
+
 // 'Atributo&': o '&' siginifica passar por referência (modifica).
 void declara_variavel( Atributo& ss, 
                        const Atributo& s1, const Atributo& s2, const int tipo ) {
   ss.c = "";
   for( int i = 0; i < s2.lst.size(); i++ ) {
+    TabelaSimbolos ts = symbol_table_stack.back();
     if( ts.find( s2.lst[i] ) != ts.end() ) 
       erro( "Variável já declarada: " + s2.lst[i] );
     else {
       ts[ s2.lst[i] ] = s1.t;
+      symbol_table_stack.pop_back();
+      symbol_table_stack.push_back(ts); 
       if (tipo == 1)
         ss.c += s1.t.decl + " " + s2.lst[i] + trata_dimensoes_decl_var( s1.t ) +";\n"; 
       else
         ss.c += s1.t.decl + " " + s2.lst[i];
-    }  
+    }
   }
 }
 
 void busca_tipo_da_variavel( Atributo& ss, const Atributo& s1 ) {
-  if( ts.find( s1.v ) == ts.end() )
-        erro( "Variável não declarada: " + s1.v );
-  else {
-    ss.t = ts[ s1.v ];
-    ss.v = s1.v;
+  int found = 0;
+  for (vector<TabelaSimbolos>::reverse_iterator it = symbol_table_stack.rbegin(); it != symbol_table_stack.rend(); it++) {
+    TabelaSimbolos ts = (*it);
+    if( ts.find( s1.v ) != ts.end() ) {
+      ss.t = ts[ s1.v ];
+      ss.v = s1.v;
+      found = 1;
+      break;
+    }
   }
+  if (found == 0) {
+    erro("Variável não declarada: " + s1.v);
+  }
+
 }
 
 void gera_codigo_atribuicao( Atributo& ss, 
@@ -164,7 +179,8 @@ void gera_codigo_operador( Atributo& ss,
       ss.t =  tro[s2.v][par( s1.t, s3.t )];
       ss.v = gera_nome_variavel(ss.t); // Precisa gerar um nome de variável temporária.
       if (ss.t.nome == "string") {
-        ss.c = s1.c + s3.c + " " + "strcat( " + s1.v + ", " + s3.v + " );\n";
+        ss.c = s1.c + s3.c + " " + "strcat( " + ss.v + ", " + s1.v + " );\n";
+        ss.c = ss.c + "strcat(" + ss.v + ", " + s3.v + ");\n";
       } else {
         ss.c = s1.c + s3.c + "  " + ss.v + " = " + s1.v + s2.v + s3.v + ";\n";
       }
@@ -219,14 +235,23 @@ LOCAL_BLOCK : _LOCALS '{' DECLARATIONS '}' {$$.c = $3.c;}
 			| _LOCAL DECLARATION ';' {$$.c = $2.c;}
 			;
 
-FUNCTION : _ID PARAMETERS ':' TYPE BLOCK { $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + $5.c + "\n"; }
-		 | _ID PARAMETERS ':' BLOCK { $$.c = "void " + $1.v + "(" + $2.c + ")" + $4.c + "\n"; }
+FUNCTION_NAME : _ID { 
+                      TabelaSimbolos ts;
+                      symbol_table_stack.push_back(ts); 
+                      $$ = $1;
+                    }
+              ;
+
+FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK { symbol_table_stack.pop_back(); $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + $5.c + "\n"; }
+		 | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); $$.c = "void " + $1.v + "(" + $2.c + ")" + $4.c + "\n"; }
 		 | _ID ':' TYPE BLOCK { $$.c = $3.t.decl + " " + $1.v + "( )" + $4.c + "\n"; }
 		 | _ID ':' BLOCK { $$.c = "void " + $1.v + "( )" + $3.c + "\n"; }
      ;
 
-PARAMETERS : PARAMETER ',' PARAMETERS {$$.c = $1.c + ", " + $3.c;}
-		   | PARAMETER
+PARAMETERS : PARAMETER ',' PARAMETERS {
+                                        $$.c = $1.c + ", " + $3.c;
+                                      }
+		   | PARAMETER 
 		   ;
 		   
 PARAMETER : TYPE IDS { declara_variavel( $$, $1, $2, 2 ); } 
@@ -260,10 +285,23 @@ IDS : _ID ',' IDS { $$.lst = $1.lst; $$.lst.push_back( $3.v ); }
     | _ID         { $$.lst.push_back( $1.v ); }
     ;  
 */
-MAIN : _MAIN ':' '{' CMDS '}'
-            { $$.c = "int main() {\n" + $4.c + "}\n"; }
+MAIN : _MAIN ':' BLOCK
+            { $$.c = "int main() {\n" + $3.c + "}\n"; }
 
-BLOCK : '{' CMDS '}' { $$.c = "\n{\n" + $2.c + "\n}\n";}
+OPEN_BLOCK : '{'  { 
+                    cout << "OPEN BLOCK" << endl; 
+                    TabelaSimbolos ts;
+                    symbol_table_stack.push_back(ts); 
+                  }
+           ;
+
+CLOSE_BLOCK : '}' { 
+                    cout << "CLOSE BLOCK" << endl; 
+                    symbol_table_stack.pop_back();
+                  }
+            ;
+
+BLOCK : OPEN_BLOCK CMDS CLOSE_BLOCK { $$.c = "\n{\n" + $2.c + "\n}\n";}
 	  | CMD { $$.c = "{\n" + $1.c + "\n}\n";}
 	  ;
 
@@ -392,6 +430,8 @@ void inicializa_tipos() {
 
 int main( int argc, char* argv[] )
 {
+  TabelaSimbolos ts;
+  symbol_table_stack.push_back(ts);
   inicializa_tipos();
   inicializa_tabela_de_resultado_de_operacoes();
   yyparse();
