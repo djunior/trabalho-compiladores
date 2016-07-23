@@ -112,7 +112,8 @@ string declara_nvar_temp( Tipo t, int n) {
 
 string declara_var_temp ( map<string,int> &temp_map) {
   string decl = declara_nvar_temp(Integer, temp_map[Integer.nome]) + 
-                declara_nvar_temp(String, temp_map[String.nome]);;
+                declara_nvar_temp(String, temp_map[String.nome]) + 
+                declara_nvar_temp(Boolean, temp_map[Boolean.nome]);
   temp_map.clear();
   return decl;
 }
@@ -378,8 +379,8 @@ EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 );
 		   | EXPRESSION '-' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		   | EXPRESSION '*' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		   | EXPRESSION '/' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
-		   | EXPRESSION '>' EXPRESSION { $$.c = $1.v + '>' + $3.v; }
-		   | EXPRESSION '<' EXPRESSION { $$.c = $1.v + '<' + $3.v; }
+		   | EXPRESSION '>' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		   | EXPRESSION '<' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		   | F { $$ = $1; }
 		   ; 
 
@@ -470,6 +471,7 @@ void inicializa_tabela_de_resultado_de_operacoes() {
   r[par(Boolean, Boolean)] = Boolean;
   
   tro[ "<" ] = r; 
+  tro[ ">" ] = r; 
   
 }
 
