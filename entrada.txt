@@ -26,8 +26,12 @@ main : {
 
     if x > 3 :
     {
-	write("x = ");
-	writeln(x);
+	  write("x = ");
+	  writeln(x);
+    }
+    else
+    {
+      writeln("x < 3");
     }
 	write("y = ");
 	writeln(y);
