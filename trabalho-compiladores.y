@@ -230,7 +230,7 @@ void gera_codigo_atribuicao( Atributo& ss,
     if (s1.t.nome == "string") {
       ss.c = s1.c + s3.c + " " + " strcpy( " + s1.v + ", " + s3.v + " );\n";
     } else {
-      ss.c = s1.c + s3.c + "  " + s1.v + " = " + s3.v + ";\n";
+      ss.c = s1.c + s3.c + " " + s1.v + " = " + s3.v + ";\n";
     }
     //cout << "\tss: " << ss << endl;
   }
@@ -312,10 +312,10 @@ FUNCTION_NAME : _ID {
                     }
               ;
 
-FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK { symbol_table_stack.pop_back(); $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + $5.c + "\n"; }
-		 | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); $$.c = "void " + $1.v + "(" + $2.c + ")" + $4.c + "\n"; }
-		 | _ID ':' TYPE BLOCK { $$.c = $3.t.decl + " " + $1.v + "( )" + $4.c + "\n"; }
-		 | _ID ':' BLOCK { $$.c = "void " + $1.v + "( )" + $3.c + "\n"; }
+FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK { symbol_table_stack.pop_back(); $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + $5.c + "\n}\n"; }
+		 | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + $4.c + "\n}\n"; }
+		 | _ID ':' TYPE BLOCK { $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + $4.c + "\n}\n"; }
+		 | _ID ':' BLOCK { $$.c = "void " + $1.v + "( )" + "\n{\n" + $3.c + "\n}\n"; }
      ;
 
 PARAMETERS : PARAMETER ',' PARAMETERS {
@@ -357,7 +357,7 @@ IDS : _ID ',' IDS { $$.lst = $1.lst; $$.lst.push_back( $3.v ); }
     ;  
 */
 MAIN : _MAIN ':' BLOCK
-            { $$.c = "int main() \n" + $3.c + "\n"; }
+            { $$.c = "int main() \n{" + $3.c + "\n}"; }
 
 OPEN_BLOCK : '{'  { 
                     TabelaSimbolos ts;
@@ -370,8 +370,8 @@ CLOSE_BLOCK : '}' {
                   }
             ;
 
-BLOCK : OPEN_BLOCK CMDS CLOSE_BLOCK { $$.c = "\n{\n" + $2.c + "\n}\n";}
-	  | CMD { $$.c = "{\n" + $1.c + "\n}\n";}
+BLOCK : OPEN_BLOCK CMDS CLOSE_BLOCK { $$.c = $2.c + "\n";}//{ $$.c = "\n{\n" + $2.c + "\n}\n";}
+	  | CMD //{ $$.c = "{\n" + $1.c + "\n}\n";}
 	  ;
 
 CMDS : CMD CMDS { $$.c = $1.c + $2.c; }
@@ -420,7 +420,7 @@ CMD_ATTRIBUTION : LVALUE _ATRIB EXPRESSION { gera_codigo_atribuicao( $$, $1, $3 
 LVALUE : _ID { busca_tipo_da_variavel( $$, $1 ); }
        ; 
 
-CMD_RETURN : _RETURN EXPRESSION { $$.c = $2.v +  ";" + $2.c + "return " + $2.v + ";";}
+CMD_RETURN : _RETURN EXPRESSION { $$.c = $2.v +  ";" + $2.c + "  return " + $2.v + ";";}
 	   	   ;
 
 CMD_IF : _IF EXPRESSION ':' BLOCK {Atributo dummy; gera_cmd_if( $$, $2, $4, dummy );}
@@ -476,7 +476,8 @@ void inicializa_tabela_de_resultado_de_operacoes() {
   r[par(String, String)] = String;    
   tro[ "+" ] = r; 
   
-  r.erase(r.begin(),r.end());
+  //r.erase(r.begin(),r.end());
+  r.clear();
   
   r[par(Integer, Integer)] = Boolean;    
   r[par(Integer, Float)] = Boolean;    
