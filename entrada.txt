@@ -24,9 +24,11 @@ main : {
 
 	x = x + 3;
 
+    if x > 3 :
+    {
 	write("x = ");
 	writeln(x);
-
+    }
 	write("y = ");
 	writeln(y);
 
