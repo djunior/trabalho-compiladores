@@ -404,7 +404,7 @@ LVALUE : _ID { busca_tipo_da_variavel( $$, $1 ); }
 CMD_RETURN : _RETURN EXPRESSION { $$.c = $2.v +  ";" + $2.c + "return " + $2.v + ";";}
 	   	   ;
 
-CMD_IF : _IF EXPRESSION ':' BLOCK {$$.c = "  if (" + $2.c + ")\n" + $4.c;}
+CMD_IF : _IF EXPRESSION ':' BLOCK {Atributo dummy; gera_cmd_if( $$, $2, $4, dummy );}
 	   | _IF EXPRESSION ':' BLOCK _ELSE BLOCK {gera_cmd_if( $$, $2, $4, $6 ); }
 	   ;
 
