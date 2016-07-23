@@ -17,6 +17,7 @@ main : {
 	a = "hello" + ", world " + " I'm here!";
 
 	locals {
+	    integer i = 0;
 		integer x = 3;
 		integer y = 5;
 		integer z = 10;
@@ -40,6 +41,13 @@ main : {
     {
 	  write("z = ");
 	  writeln(z);
+	}
+	
+	while i<7 :
+	{
+	  write(" i = ");
+	  writeln(i);
+	  i = i + 1;
 	}
 
 	write("a = ");
