@@ -43,6 +43,7 @@ typedef map<string,Tipo> TabelaSimbolos;
 
 map< string, map< string, Tipo > > tro; // tipo_resultado_operacao;
 map<string,int> temp_global;
+map< string, int > nlabel;
 
 vector< TabelaSimbolos > symbol_table_stack;
 
@@ -88,6 +89,10 @@ string gera_nome_variavel(Tipo t) {
   return gera_nome_variavel(t,++temp_global[t.nome]);
 }
 
+string gera_nome_label( string cmd ) {
+  return "L_" + cmd + "_" + toString( ++nlabel[cmd] );
+}
+
 string trata_dimensoes_decl_var( Tipo t ) {
   string aux;
   
@@ -112,6 +117,24 @@ string declara_var_temp ( map<string,int> &temp_map) {
   return decl;
 }
 
+void gera_cmd_if( Atributo& ss, 
+                  const Atributo& exp, 
+                  const Atributo& cmd_then, 
+                  const Atributo& cmd_else ) { 
+  string lbl_then = gera_nome_label( "then" );
+  string lbl_end_if = gera_nome_label( "end_if" );
+  
+  if( exp.t.nome != Boolean.nome )
+    erro( "A expressão do IF deve ser booleana!" );
+    
+  ss.c = exp.c + 
+         "\nif( " + exp.v + " ) goto " + lbl_then + ";\n" +
+         cmd_else.c + "  goto " + lbl_end_if + ";\n\n" +
+         lbl_then + ":;\n" + 
+         cmd_then.c + "\n" +
+         lbl_end_if + ":;\n"; 
+}
+
 // 'Atributo&': o '&' siginifica passar por referência (modifica).
 void declara_variavel( Atributo& ss, 
                        const Atributo& s1, const Atributo& s2, const int tipo ) {
@@ -122,8 +145,11 @@ void declara_variavel( Atributo& ss,
       erro( "Variável já declarada: " + s2.lst[i] );
     else {
       ts[ s2.lst[i] ] = s1.t;
+
+      // Salvando nova tabela de simbolos na pilha
       symbol_table_stack.pop_back();
       symbol_table_stack.push_back(ts); 
+
       if (tipo == 1)
         ss.c += s1.t.decl + " " + s2.lst[i] + trata_dimensoes_decl_var( s1.t ) +";\n"; 
       else
@@ -136,7 +162,7 @@ void busca_tipo_da_variavel( Atributo& ss, const Atributo& s1 ) {
   int found = 0;
   for (vector<TabelaSimbolos>::reverse_iterator it = symbol_table_stack.rbegin(); it != symbol_table_stack.rend(); it++) {
     TabelaSimbolos ts = (*it);
-    if( ts.find( s1.v ) != ts.end() ) {
+    if ( ts.find( s1.v ) != ts.end() ) {
       ss.t = ts[ s1.v ];
       ss.v = s1.v;
       found = 1;
@@ -146,7 +172,6 @@ void busca_tipo_da_variavel( Atributo& ss, const Atributo& s1 ) {
   if (found == 0) {
     erro("Variável não declarada: " + s1.v);
   }
-
 }
 
 void gera_codigo_atribuicao( Atributo& ss, 
@@ -196,9 +221,9 @@ void gera_codigo_operador( Atributo& ss,
 
 %token _ID _PROGRAM _MAIN _WRITELN _WRITE _VAR _IF _ELSE _WHILE
 %token _FOR _ATRIB _RETURN _FUNCTION _GLOBAL _GLOBALS _LOCAL _LOCALS
-%token _INTEGER _STRING
+%token _INTEGER _STRING _BOOLEAN
 
-%token _CTE_STRING _CTE_INTEGER
+%token _CTE_STRING _CTE_INTEGER _CTE_TRUE _CTE_FALSE
 
 %nonassoc '>' '<' '='
 %left '+' '-'
@@ -275,6 +300,7 @@ DECLARATION : TYPE IDS _ATRIB CTE_VAL
 
 TYPE : _STRING  { $$.t = String; }
 	 | _INTEGER { $$.t = Integer; }
+   | _BOOLEAN { $$.t = Boolean; }
 	 ;
 
 IDS : _ID { $$.lst.push_back( $1.v ); } //Quando usamos mais de um ID (regra comentada abaixo), ficamos com mais um conflito de shift/reduce
@@ -286,17 +312,15 @@ IDS : _ID ',' IDS { $$.lst = $1.lst; $$.lst.push_back( $3.v ); }
     ;  
 */
 MAIN : _MAIN ':' BLOCK
-            { $$.c = "int main() {\n" + $3.c + "}\n"; }
+            { $$.c = "int main() \n" + $3.c + "\n"; }
 
 OPEN_BLOCK : '{'  { 
-                    cout << "OPEN BLOCK" << endl; 
                     TabelaSimbolos ts;
                     symbol_table_stack.push_back(ts); 
                   }
            ;
 
 CLOSE_BLOCK : '}' { 
-                    cout << "CLOSE BLOCK" << endl; 
                     symbol_table_stack.pop_back();
                   }
             ;
@@ -336,6 +360,8 @@ EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 );
 
 CTE_VAL : _CTE_STRING { $$ = $1; $$.t = String; }
         | _CTE_INTEGER { $$ = $1; $$.t = Integer; }
+        | _CTE_TRUE { $$ = $1; $$.t = Boolean; }
+        | _CTE_FALSE { $$ = $1; $$.t = Boolean; }
         ;
 
 F : _ID                   { busca_tipo_da_variavel( $$, $1 ); }
@@ -353,7 +379,7 @@ CMD_RETURN : _RETURN EXPRESSION { $$.c = $2.v +  ";" + $2.c + "return " + $2.v +
 	   	   ;
 
 CMD_IF : _IF EXPRESSION ':' BLOCK {$$.c = "  if (" + $2.c + ")\n" + $4.c;}
-	   | _IF EXPRESSION ':' BLOCK _ELSE BLOCK {$$.c = "  if(" + $2.c + ")\n" + $4.c + "\n  else\n" + $6.c;}
+	   | _IF EXPRESSION ':' BLOCK _ELSE BLOCK {gera_cmd_if( $$, $2, $4, $6 ); }
 	   ;
 
 CMD_WHILE : _WHILE EXPRESSION ':' BLOCK

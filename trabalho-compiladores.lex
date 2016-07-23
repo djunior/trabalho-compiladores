@@ -12,8 +12,6 @@ COMMENT "#"[^\n]*
 PROGRAM 	program
 WRITELN		writeln
 WRITE		write
-INTEGER		integer
-STRING		string
 VAR			var
 IF			if
 ELSE		else
@@ -26,6 +24,13 @@ LOCALS 		locals
 WHILE		while
 MAIN        main
 
+INTEGER		integer
+STRING		string
+
+BOOLEAN 	boolean
+
+CTE_TRUE	true
+CTE_FALSE	false
 CTE_STRING	"\""([^\"\n]|"\"\"")*"\""
 CTE_INTEGER {DIGITO}+
 
@@ -41,8 +46,6 @@ void trata_folha();
 {PROGRAM} 	{ trata_folha(); return _PROGRAM; }
 {WRITELN} 	{ trata_folha(); return _WRITELN; }
 {WRITE} 	{ trata_folha(); return _WRITE; }
-{STRING} 	{ trata_folha(); return _STRING; }
-{INTEGER} 	{ trata_folha(); return _INTEGER; }
 {VAR} 		{ trata_folha(); return _VAR; }
 {IF} 		{ trata_folha(); return _IF; }
 {ELSE} 		{ trata_folha(); return _ELSE; }
@@ -55,6 +58,12 @@ void trata_folha();
 {LOCALS}	{ trata_folha(); return _LOCALS; }
 {WHILE}		{ trata_folha(); return _WHILE; }
 
+{STRING} 	{ trata_folha(); return _STRING; }
+{INTEGER} 	{ trata_folha(); return _INTEGER; }
+{BOOLEAN}	{ trata_folha(); return _BOOLEAN; }
+
+{CTE_TRUE}		{ trata_folha(); yylval.v = "1"; return _CTE_TRUE; }
+{CTE_FALSE}		{ trata_folha(); yylval.v = "0"; return _CTE_FALSE; }
 {CTE_STRING} 	{ trata_folha(); return _CTE_STRING; }
 {CTE_INTEGER} 	{ trata_folha(); return _CTE_INTEGER; }
 
