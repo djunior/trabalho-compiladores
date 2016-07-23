@@ -36,8 +36,11 @@ main : {
 	write("y = ");
 	writeln(y);
 
-	write("z = ");
-	writeln(z);
+    if z < 7 :
+    {
+	  write("z = ");
+	  writeln(z);
+	}
 
 	write("a = ");
 	writeln(a);
