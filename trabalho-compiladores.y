@@ -135,6 +135,31 @@ void gera_cmd_if( Atributo& ss,
          lbl_end_if + ":;\n"; 
 }
 
+void gera_cmd_for( Atributo& ss,
+                  const Atributo& decl,
+                  const Atributo& exp,
+                  const Atributo& cmd,
+                  const Atributo& blk) {
+
+  string lbl_teste = gera_nome_label("teste");
+  string lbl_bloco = gera_nome_label("bloco");
+  string lbl_fim = gera_nome_label("fim");
+
+  //if (exp.t.nome != Boolean.nome)
+ //   erro("A expressão do for deve ser booleana!");
+
+  ss.c = decl.c +
+        "\n" + lbl_teste + ":;" +
+        "\n if(" + exp.c + ") goto " + lbl_bloco + ";" +
+        "\n goto " + lbl_fim + ";" +
+        "\n" + lbl_bloco + ":;" +
+        "\n " + blk.c +
+        "\n " + cmd.c +
+        "\n goto " + lbl_teste + ";" +
+        "\n" + lbl_fim + ":;"; 
+
+}
+
 // 'Atributo&': o '&' siginifica passar por referência (modifica).
 void declara_variavel( Atributo& ss, 
                        const Atributo& s1, const Atributo& s2, const int tipo ) {
@@ -385,7 +410,7 @@ CMD_IF : _IF EXPRESSION ':' BLOCK {$$.c = "  if (" + $2.c + ")\n" + $4.c;}
 CMD_WHILE : _WHILE EXPRESSION ':' BLOCK
 		  ;
 
-CMD_FOR : _FOR DECLARATION ',' EXPRESSION ',' CMD_ATTRIBUTION ':' BLOCK { $$.c = "for (\n  " + $2.c + "  " + $4.c + ";\n" + $6.c + ")\n" + $8.c;}
+CMD_FOR : _FOR DECLARATION ',' EXPRESSION ',' CMD_ATTRIBUTION ':' BLOCK { gera_cmd_for($$, $2, $4, $6, $8);}
 		;
 
 %%
