@@ -161,6 +161,25 @@ void gera_cmd_for( Atributo& ss,
 
 }
 
+void gera_cmd_while( Atributo& ss, 
+                  const Atributo& exp, 
+                  const Atributo& blk) { 
+  string lbl_teste = gera_nome_label("teste_while");
+  string lbl_bloco = gera_nome_label("bloco_while");
+  string lbl_fim = gera_nome_label("fim_while");
+  
+  if( exp.t.nome != Boolean.nome )
+    erro( "A expressão do WHILE deve ser booleana!" );
+    
+  ss.c = lbl_teste + ":;\n" + exp.c + 
+         "\nif( " + exp.v + " ) goto " + lbl_bloco + ";\n" +
+         "  goto " + lbl_fim + ";\n\n" +
+         lbl_bloco + ":;\n" + 
+         blk.c + "\n" +
+         "  goto " + lbl_teste + ";\n" +
+         lbl_fim + ":;\n";
+}
+
 // 'Atributo&': o '&' siginifica passar por referência (modifica).
 void declara_variavel( Atributo& ss, 
                        const Atributo& s1, const Atributo& s2, const int tipo ) {
@@ -408,7 +427,7 @@ CMD_IF : _IF EXPRESSION ':' BLOCK {Atributo dummy; gera_cmd_if( $$, $2, $4, dumm
 	   | _IF EXPRESSION ':' BLOCK _ELSE BLOCK {gera_cmd_if( $$, $2, $4, $6 ); }
 	   ;
 
-CMD_WHILE : _WHILE EXPRESSION ':' BLOCK
+CMD_WHILE : _WHILE EXPRESSION ':' BLOCK { gera_cmd_while($$, $2, $4); }
 		  ;
 
 CMD_FOR : _FOR DECLARATION ',' EXPRESSION ',' CMD_ATTRIBUTION ':' BLOCK { gera_cmd_for($$, $2, $4, $6, $8);}
