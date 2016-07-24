@@ -23,8 +23,15 @@ main : {
 		integer x = 3;
 		integer y = 5;
 		integer z = 10;
+		float num = 7.7;
 	}
 
+    write("O valor de num é = ");
+    writeln(num);
+    
+    write("x + num = ");
+    writeln(x + num);
+    
 	x = x + 3;
 
     if x > 3 :
@@ -45,7 +52,7 @@ main : {
 	  writeln(z);
 	}
 	
-	writeln("Contagem de 0 a 6 com while");
+	writeln("Contagem de 1 a 7 com while");
 	while i<7 :
 	{
 	  locals {
