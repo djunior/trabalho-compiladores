@@ -5,7 +5,9 @@ globals {
 }
 
 inc integer x: integer {
-	<= x + 1;
+	local integer a = 10;
+	local integer b = 5;
+	<= x + a + b;
 }
 
 dec integer x: integer {
@@ -43,11 +45,23 @@ main : {
 	  writeln(z);
 	}
 	
+	writeln("Contagem de 0 a 6 com while");
 	while i<7 :
 	{
+	  locals {
+	  	integer j;
+	  	integer k = 1;
+	  }
+	  j = i;
 	  write(" i = ");
-	  writeln(i);
-	  i = i + 1;
+	  writeln(j+k);
+	  i = j + k;
+	}
+
+	writeln("Contagem de 0 a 9 com for");
+	for integer n = 0, n < 10, n = n + 1: {
+		write(" n = ");
+		writeln(n);
 	}
 
 	write("a = ");

@@ -6,6 +6,14 @@
 #include <map>
 #include <vector>
 
+//#define __DEBUG__
+
+#ifdef __DEBUG__ 
+#define DEBUG(x) x
+#else
+#define DEBUG(x)
+#endif
+
 using namespace std;
 
 struct Range {
@@ -16,15 +24,16 @@ struct Tipo {
   string nome;  // O nome na sua linguagem
   string decl;  // A declaração correspondente em c-assembly
   string fmt;   // O formato para "printf"
+  bool isParam;
   vector<Range> dim;
 };
 
-Tipo Integer = { "integer", "int", "d" };
-Tipo Float =   { "float", "float", "f" };
-Tipo Double =  { "double", "double", "lf" };
-Tipo Boolean = { "boolean", "int", "d" };
-Tipo String =  { "string", "char", "s" };
-Tipo Char =    { "char", "char", "c" };
+Tipo Integer = { "integer", "int", "d", false };
+Tipo Float =   { "float", "float", "f", false };
+Tipo Double =  { "double", "double", "lf", false };
+Tipo Boolean = { "boolean", "int", "d", false };
+Tipo String =  { "string", "char", "s", false };
+Tipo Char =    { "char", "char", "c", false };
 
 struct Atributo {
   string v, c;
@@ -72,7 +81,15 @@ ostream& operator << ( ostream& o, const Atributo& st ) {
   o << ", c = " << st.c;
   o << ", t = " << st.t;
   o << "}";
-  return o;     
+  return o;
+}
+
+ostream& operator << (ostream& o, const vector<TabelaSimbolos> stack) {
+  o << "Pilha tabela de simbolos: ";
+  for (int i = 0; i < stack.size(); i++) {
+    o << "Tabela (" << i << ")";
+  }
+  return o;
 }
 
 string toString(int n) {
@@ -142,16 +159,20 @@ void gera_cmd_for( Atributo& ss,
                   const Atributo& cmd,
                   const Atributo& blk) {
 
-  string lbl_teste = gera_nome_label("teste");
-  string lbl_bloco = gera_nome_label("bloco");
-  string lbl_fim = gera_nome_label("fim");
+  string lbl_teste = gera_nome_label("teste_for");
+  string lbl_bloco = gera_nome_label("bloco_for");
+  string lbl_fim = gera_nome_label("fim_for");
 
   //if (exp.t.nome != Boolean.nome)
  //   erro("A expressão do for deve ser booleana!");
 
+  DEBUG(cout << "Exp:" << endl);
+  DEBUG(cout << exp << endl);
+
   ss.c = decl.c +
-        "\n" + lbl_teste + ":;" +
-        "\n if(" + exp.c + ") goto " + lbl_bloco + ";" +
+        "\n" + lbl_teste + ":;" + 
+        "\n" + exp.c + 
+        "\n if(" + exp.v + ") goto " + lbl_bloco + ";" +
         "\n goto " + lbl_fim + ";" +
         "\n" + lbl_bloco + ":;" +
         "\n " + blk.c +
@@ -184,21 +205,22 @@ void gera_cmd_while( Atributo& ss,
 void declara_variavel( Atributo& ss, 
                        const Atributo& s1, const Atributo& s2, const int tipo ) {
   ss.c = "";
+  TabelaSimbolos ts = symbol_table_stack.back();
   for( int i = 0; i < s2.lst.size(); i++ ) {
-    TabelaSimbolos ts = symbol_table_stack.back();
     if( ts.find( s2.lst[i] ) != ts.end() ) 
       erro( "Variável já declarada: " + s2.lst[i] );
     else {
+
       ts[ s2.lst[i] ] = s1.t;
+      ts[ s2.lst[i] ].isParam = tipo == 2;
 
       // Salvando nova tabela de simbolos na pilha
       symbol_table_stack.pop_back();
       symbol_table_stack.push_back(ts); 
 
-      if (tipo == 1)
-        ss.c += s1.t.decl + " " + s2.lst[i] + trata_dimensoes_decl_var( s1.t ) +";\n"; 
-      else
+      if (tipo == 2) {
         ss.c += s1.t.decl + " " + s2.lst[i];
+      }
     }
   }
 }
@@ -224,15 +246,11 @@ void gera_codigo_atribuicao( Atributo& ss,
                              const Atributo& s3 ) {
   if( s1.t.nome == s3.t.nome || 
       (s1.t.nome == Float.nome && s3.t.nome == Integer.nome ) ) {
-    //cout << "gera_codigo_atribuicao:" << endl;
-    //cout << "\ts1: " << s1 << endl;
-    //cout << "\ts3: " << s3 << endl;
     if (s1.t.nome == "string") {
-      ss.c = s1.c + s3.c + " " + " strcpy( " + s1.v + ", " + s3.v + " );\n";
+      ss.c = s1.c + s3.c + " " + " strncpy( " + s1.v + ", " + s3.v + ", " + toString(s1.t.dim[0].fim) + " );\n";
     } else {
       ss.c = s1.c + s3.c + " " + s1.v + " = " + s3.v + ";\n";
     }
-    //cout << "\tss: " << ss << endl;
   }
 }
 
@@ -241,25 +259,43 @@ string par( Tipo a, Tipo b ) {
 }
 
 void gera_codigo_operador( Atributo& ss, 
-                           const Atributo& s1, 
-                           const Atributo& s2, 
-                           const Atributo& s3 ) {
-  if( tro.find( s2.v ) != tro.end() ) {
-    if( tro[s2.v].find( par( s1.t, s3.t ) ) != tro[s2.v].end() ) {
-      ss.t =  tro[s2.v][par( s1.t, s3.t )];
+                           const Atributo& esq, 
+                           const Atributo& op, 
+                           const Atributo& dir ) {
+
+  DEBUG(cout << "Gera Codigo operador:" << endl);
+  DEBUG(cout << "  " << esq << endl);
+  DEBUG(cout << "  " << op << endl);
+  DEBUG(cout << "  " << dir << endl);
+
+  if( tro.find( op.v ) != tro.end() ) {
+    if( tro[op.v].find( par( esq.t, dir.t ) ) != tro[op.v].end() ) {
+      ss.t =  tro[op.v][par( esq.t, dir.t )];
       ss.v = gera_nome_variavel(ss.t); // Precisa gerar um nome de variável temporária.
       if (ss.t.nome == "string") {
-        ss.c = s1.c + s3.c + " " + "strcat( " + ss.v + ", " + s1.v + " );\n";
-        ss.c = ss.c + "strcat(" + ss.v + ", " + s3.v + ");\n";
+        ss.c = esq.c + dir.c + " " + "strncat( " + ss.v + ", " + esq.v + ", " + toString(esq.t.dim[0].fim) + " );\n";
+        ss.c = ss.c + "strncat(" + ss.v + ", " + dir.v + ", " + toString(dir.t.dim[0].fim) + ");\n";
       } else {
-        ss.c = s1.c + s3.c + "  " + ss.v + " = " + s1.v + s2.v + s3.v + ";\n";
+        ss.c = esq.c + dir.c + "  " + ss.v + " = " + esq.v + op.v + dir.v + ";\n";
       }
+
+      DEBUG(cout << "  " << ss << endl);
     }
     else
-      erro( "O operador '" + s2.v + "' não está definido para os tipos " + s1.t.nome + " e " + s3.t.nome + "." );
+      erro( "O operador '" + op.v + "' não está definido para os tipos " + esq.t.nome + " e " + dir.t.nome + "." );
   }
   else
-    erro( "Operador '" + s2.v + "' não definido." );
+    erro( "Operador '" + op.v + "' não definido." );
+}
+
+string gera_declaracao_variaveis( ) {
+  string decls = "";
+  TabelaSimbolos ts = symbol_table_stack.back();
+  for (TabelaSimbolos::iterator it = ts.begin(); it != ts.end(); it ++ ) {
+    if (it->second.isParam == false)
+      decls += it->second.decl + " " + it->first + trata_dimensoes_decl_var(it->second) + ";\n";
+  }
+  return decls;
 }
 
 %}
@@ -279,8 +315,10 @@ void gera_codigo_operador( Atributo& ss,
 %%
 
 S : NAME BODY_BLOCK MAIN 
-  { cout << $1.c << declara_var_temp(temp_global)
-    << $2.c << $3.c << endl; }
+    { 
+      cout << $1.c << declara_var_temp(temp_global) << gera_declaracao_variaveis()
+      << $2.c << $3.c << endl; 
+    }
   ;
    
 NAME : _PROGRAM _ID ';' 
@@ -312,7 +350,10 @@ FUNCTION_NAME : _ID {
                     }
               ;
 
-FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK { symbol_table_stack.pop_back(); $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + $5.c + "\n}\n"; }
+FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK  { 
+                                                      $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + gera_declaracao_variaveis() + $5.c + "\n}\n"; 
+                                                      symbol_table_stack.pop_back();
+                                                    }
 		 | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + $4.c + "\n}\n"; }
 		 | _ID ':' TYPE BLOCK { $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + $4.c + "\n}\n"; }
 		 | _ID ':' BLOCK { $$.c = "void " + $1.v + "( )" + "\n{\n" + $3.c + "\n}\n"; }
@@ -360,17 +401,18 @@ MAIN : _MAIN ':' BLOCK
             { $$.c = "int main() \n{" + $3.c + "\n}"; }
 
 OPEN_BLOCK : '{'  { 
-                    TabelaSimbolos ts;
-                    symbol_table_stack.push_back(ts); 
+                    // TabelaSimbolos ts;
+                    // symbol_table_stack.push_back(ts); 
                   }
            ;
 
 CLOSE_BLOCK : '}' { 
-                    symbol_table_stack.pop_back();
+                    // gera_declaracao_variaveis($$);
+                    // symbol_table_stack.pop_back();
                   }
             ;
 
-BLOCK : OPEN_BLOCK CMDS CLOSE_BLOCK { $$.c = $2.c + "\n";}//{ $$.c = "\n{\n" + $2.c + "\n}\n";}
+BLOCK : OPEN_BLOCK CMDS CLOSE_BLOCK { $$.c = $3.c + $2.c + "\n";}//{ $$.c = "\n{\n" + $2.c + "\n}\n";}
 	  | CMD //{ $$.c = "{\n" + $1.c + "\n}\n";}
 	  ;
 
@@ -420,7 +462,7 @@ CMD_ATTRIBUTION : LVALUE _ATRIB EXPRESSION { gera_codigo_atribuicao( $$, $1, $3 
 LVALUE : _ID { busca_tipo_da_variavel( $$, $1 ); }
        ; 
 
-CMD_RETURN : _RETURN EXPRESSION { $$.c = $2.v +  ";" + $2.c + "  return " + $2.v + ";";}
+CMD_RETURN : _RETURN EXPRESSION { $$.c = $2.c + "  return " + $2.v + ";"; }
 	   	   ;
 
 CMD_IF : _IF EXPRESSION ':' BLOCK {Atributo dummy; gera_cmd_if( $$, $2, $4, dummy );}

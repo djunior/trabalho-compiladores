@@ -2,3 +2,5 @@ trabalho-compiladores
 y.output
 y.tab.c
 lex.yy.c
+saida
+saida.cc
