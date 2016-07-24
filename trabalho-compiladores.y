@@ -129,6 +129,7 @@ string declara_nvar_temp( Tipo t, int n) {
 
 string declara_var_temp ( map<string,int> &temp_map) {
   string decl = declara_nvar_temp(Integer, temp_map[Integer.nome]) + 
+                declara_nvar_temp(Float, temp_map[Float.nome]) +
                 declara_nvar_temp(String, temp_map[String.nome]) + 
                 declara_nvar_temp(Boolean, temp_map[Boolean.nome]);
   temp_map.clear();
@@ -302,9 +303,9 @@ string gera_declaracao_variaveis( ) {
 
 %token _ID _PROGRAM _MAIN _WRITELN _WRITE _VAR _IF _ELSE _WHILE
 %token _FOR _ATRIB _RETURN _FUNCTION _GLOBAL _GLOBALS _LOCAL _LOCALS
-%token _INTEGER _STRING _BOOLEAN
+%token _INTEGER _STRING _BOOLEAN _FLOAT
 
-%token _CTE_STRING _CTE_INTEGER _CTE_TRUE _CTE_FALSE
+%token _CTE_STRING _CTE_INTEGER _CTE_TRUE _CTE_FALSE _CTE_FLOAT
 
 %nonassoc '>' '<' '='
 %left '+' '-'
@@ -386,7 +387,8 @@ DECLARATION : TYPE IDS _ATRIB CTE_VAL
 
 TYPE : _STRING  { $$.t = String; }
 	 | _INTEGER { $$.t = Integer; }
-   | _BOOLEAN { $$.t = Boolean; }
+	 | _FLOAT   { $$.t = Float; }
+     | _BOOLEAN { $$.t = Boolean; }
 	 ;
 
 IDS : _ID { $$.lst.push_back( $1.v ); } //Quando usamos mais de um ID (regra comentada abaixo), ficamos com mais um conflito de shift/reduce
@@ -431,9 +433,9 @@ CMD : CMD_ATTRIBUTION ';' {$$ = $1; }
 	;
 
 PRINT : _WRITE '(' EXPRESSION ')'
-        { $$.c = "  printf( \"%"+ $3.t.fmt + "\", " + $3.v + " );\n"; }
+        { $$.c = "  " + $3.c + "\n  printf( \"%" + $3.t.fmt + "\", " + $3.v + " );\n"; }
       | _WRITELN '(' EXPRESSION ')'
-        { $$.c = "  printf( \"%"+ $3.t.fmt + "\\n\", " + $3.v + " );\n"; }
+        { $$.c = "  " + $3.c + "\n  printf( \"%" + $3.t.fmt + "\\n\", " + $3.v + " );\n"; }
       ;
 
 EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
@@ -445,10 +447,11 @@ EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 );
 		   | F { $$ = $1; }
 		   ; 
 
-CTE_VAL : _CTE_STRING { $$ = $1; $$.t = String; }
+CTE_VAL : _CTE_STRING  { $$ = $1; $$.t = String;  }
         | _CTE_INTEGER { $$ = $1; $$.t = Integer; }
-        | _CTE_TRUE { $$ = $1; $$.t = Boolean; }
-        | _CTE_FALSE { $$ = $1; $$.t = Boolean; }
+        | _CTE_FLOAT   { $$ = $1; $$.t = Float;   }
+        | _CTE_TRUE    { $$ = $1; $$.t = Boolean; }
+        | _CTE_FALSE   { $$ = $1; $$.t = Boolean; }
         ;
 
 F : _ID                   { busca_tipo_da_variavel( $$, $1 ); }

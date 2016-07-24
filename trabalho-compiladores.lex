@@ -25,6 +25,7 @@ WHILE		while
 MAIN        main
 
 INTEGER		integer
+FLOAT       float
 STRING		string
 
 BOOLEAN 	boolean
@@ -33,6 +34,7 @@ CTE_TRUE	true
 CTE_FALSE	false
 CTE_STRING	"\""([^\"\n]|"\"\"")*"\""
 CTE_INTEGER {DIGITO}+
+CTE_FLOAT   {DIGITO}+|({DIGITO}+"."{DIGITO}+)
 
 %%
 
@@ -61,11 +63,13 @@ void trata_folha();
 {STRING} 	{ trata_folha(); return _STRING; }
 {INTEGER} 	{ trata_folha(); return _INTEGER; }
 {BOOLEAN}	{ trata_folha(); return _BOOLEAN; }
+{FLOAT}	    { trata_folha(); return _FLOAT; }
 
 {CTE_TRUE}		{ trata_folha(); yylval.v = "1"; return _CTE_TRUE; }
 {CTE_FALSE}		{ trata_folha(); yylval.v = "0"; return _CTE_FALSE; }
 {CTE_STRING} 	{ trata_folha(); return _CTE_STRING; }
 {CTE_INTEGER} 	{ trata_folha(); return _CTE_INTEGER; }
+{CTE_FLOAT} 	{ trata_folha(); return _CTE_FLOAT; }
 
 "<="		{ trata_folha(); return _RETURN; }
 "="			{ trata_folha(); return _ATRIB; }
