@@ -24,6 +24,7 @@ LOCALS 		locals
 WHILE		while
 MAIN        main
 
+
 INTEGER		integer
 FLOAT       float
 STRING		string

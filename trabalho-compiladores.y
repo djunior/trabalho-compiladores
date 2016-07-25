@@ -25,7 +25,8 @@ struct Tipo {
   string decl;  // A declaração correspondente em c-assembly
   string fmt;   // O formato para "printf"
   bool isParam;
-  vector<Range> dim;
+  vector<Range> dim; // Dimensões do array
+  vector<Range> acc; // Indices de acesso
 };
 
 Tipo Integer = { "integer", "int", "d", false };
@@ -66,11 +67,23 @@ ostream& operator << ( ostream& o, const vector<string>& st ) {
   return o;     
 }
 
+ostream& operator << ( ostream& o, const vector<Range>& r ) {
+  for ( vector<Range>::const_iterator it = r.begin(); it != r.end(); it++ ) {
+    o << "[";
+    o << (*it).inicio;
+    o << ",";
+    o << (*it).fim;
+    o << "]";
+  }
+  return o;
+}
+
 ostream& operator << ( ostream& o, const Tipo& st ) {
   o << "Tipo{";
   o << "nome = " << st.nome;
   o << ", decl = " << st.decl;
   o << ", fmt = " << st.fmt;
+  o << ", dim = " << st.dim;
   o << "}";
   return o;     
 }
@@ -98,6 +111,10 @@ string toString(int n) {
   return (string) buff;
 }
 
+int toInt(string s) {
+  return atoi(s.c_str());
+}
+
 string gera_nome_variavel(Tipo t, int n) {
   return "t_" + t.nome + "_" + toString(n);
 }
@@ -112,10 +129,18 @@ string gera_nome_label( string cmd ) {
 
 string trata_dimensoes_decl_var( Tipo t ) {
   string aux;
-  
-  for( int i = 0; i < t.dim.size(); i++ )
-    aux += "[" + toString( t.dim[i].fim - t.dim[i].inicio + 1 )+ "]";
-           
+  int totalSize = 1;
+
+  if (t.dim.size() == 0)
+    return "";
+
+  for( int i = 0; i < t.dim.size(); i++ ) {
+    int size = t.dim[i].fim - t.dim[i].inicio + 1;
+    totalSize *= size;
+  }
+
+  aux = "[" + toString(totalSize) + "]";
+
   return aux;         
 }
 
@@ -242,16 +267,39 @@ void busca_tipo_da_variavel( Atributo& ss, const Atributo& s1 ) {
   }
 }
 
-void gera_codigo_atribuicao( Atributo& ss, 
-                             const Atributo& s1, 
-                             const Atributo& s3 ) {
-  if( s1.t.nome == s3.t.nome || 
-      (s1.t.nome == Float.nome && s3.t.nome == Integer.nome ) ) {
-    if (s1.t.nome == "string") {
-      ss.c = s1.c + s3.c + " " + " strncpy( " + s1.v + ", " + s3.v + ", " + toString(s1.t.dim[0].fim) + " );\n";
-    } else {
-      ss.c = s1.c + s3.c + " " + s1.v + " = " + s3.v + ";\n";
+string trata_acesso_var(const Tipo& t) {
+  string aux;
+  int indice = 0;
+  for( int i = 0; i < t.acc.size(); i++ ) {
+    int tam_restante = 1;
+    int indice_atual = t.acc[i].fim - t.acc[i].inicio + 1;
+    for (int j = i+1; j < t.dim.size(); j++) {
+        int size = t.dim[j].fim - t.dim[j].inicio + 1;
+        tam_restante *= size;
     }
+    indice += indice_atual*tam_restante;
+  }
+    //aux += "[" + toString( t.dim[i].fim - t.dim[i].inicio + 1 )+ "]";
+  if (t.acc.size() > 0)
+    aux = "[" + toString(indice) + "]";
+
+  return aux;         
+}
+
+void gera_codigo_atribuicao( Atributo& ss, 
+                             const Atributo& esq, 
+                             const Atributo& dir ) {
+  if( esq.t.nome == dir.t.nome || 
+      (esq.t.nome == Float.nome && dir.t.nome == Integer.nome ) ) {
+    if (esq.t.nome == "string") {
+      ss.c = esq.c + dir.c + " " + " strncpy( " + esq.v + ", " + dir.v + ", " + toString(esq.t.dim[0].fim) + " );\n";
+    } else {
+      ss.c = esq.c + dir.c + " " + esq.v + trata_acesso_var(esq.t) + " = " + dir.v + ";\n";
+    }
+    DEBUG(cout << "gera_codigo_atribuicao:" << endl);
+    DEBUG(cout << " " << ss << endl);
+    DEBUG(cout << " " << esq << endl);
+    DEBUG(cout << " " << dir << endl);
   }
 }
 
@@ -290,13 +338,22 @@ void gera_codigo_operador( Atributo& ss,
 }
 
 string gera_declaracao_variaveis( ) {
+  DEBUG(cout << "gera_declaracao_variaveis" << endl);
   string decls = "";
   TabelaSimbolos ts = symbol_table_stack.back();
   for (TabelaSimbolos::iterator it = ts.begin(); it != ts.end(); it ++ ) {
-    if (it->second.isParam == false)
+    if (it->second.isParam == false) {
+      DEBUG(cout << "Variavel: " << it->first << ", Tipo = " << it->second << endl);
       decls += it->second.decl + " " + it->first + trata_dimensoes_decl_var(it->second) + ";\n";
+    }
   }
   return decls;
+}
+
+void copia_delimitadores_array( Atributo& ss,
+                                const Atributo& array) {
+  for (int i = 0; i < array.t.dim.size(); i++)
+    ss.t.dim.push_back(array.t.dim[i]);
 }
 
 %}
@@ -326,23 +383,24 @@ NAME : _PROGRAM _ID ';'
        { $$.c = "#include <stdlib.h>\n"
                 "#include <string.h>\n"
                 "#include <stdio.h>\n\n";
-       }              
-     ;   
+       }
+     ;
+
 BODY_BLOCK : BODY_ELEMENT BODY_BLOCK { $$.c = $1.c + $2.c; }
-       | { $$.c = ""; }
-       ;
+           | { $$.c = ""; }
+           ;
        
 BODY_ELEMENT : GLOBAL_BLOCK 
-      | FUNCTION 
-      ;
+             | FUNCTION 
+             ;
 
 GLOBAL_BLOCK : _GLOBALS '{' DECLARATIONS '}' { $$.c = $3.c + "\n"; }
-			 | _GLOBAL DECLARATION ';' { $$ = $2; }
-	   	 ;
+			       | _GLOBAL DECLARATION ';' { $$ = $2; }
+	   	       ;
 
 LOCAL_BLOCK : _LOCALS '{' DECLARATIONS '}' {$$.c = $3.c;}
-			| _LOCAL DECLARATION ';' {$$.c = $2.c;}
-			;
+			      | _LOCAL DECLARATION ';' {$$.c = $2.c;}
+			      ;
 
 FUNCTION_NAME : _ID { 
                       TabelaSimbolos ts;
@@ -355,24 +413,24 @@ FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK  {
                                                       $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + gera_declaracao_variaveis() + $5.c + "\n}\n"; 
                                                       symbol_table_stack.pop_back();
                                                     }
-		 | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + $4.c + "\n}\n"; }
-		 | _ID ':' TYPE BLOCK { $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + $4.c + "\n}\n"; }
-		 | _ID ':' BLOCK { $$.c = "void " + $1.v + "( )" + "\n{\n" + $3.c + "\n}\n"; }
-     ;
+		     | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + $4.c + "\n}\n"; }
+		     | _ID ':' TYPE BLOCK { $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + $4.c + "\n}\n"; }
+		     | _ID ':' BLOCK { $$.c = "void " + $1.v + "( )" + "\n{\n" + $3.c + "\n}\n"; }
+         ;
 
 PARAMETERS : PARAMETER ',' PARAMETERS {
                                         $$.c = $1.c + ", " + $3.c;
                                       }
-		   | PARAMETER 
-		   ;
+		       | PARAMETER 
+		       ;
 		   
 PARAMETER : TYPE IDS { declara_variavel( $$, $1, $2, 2 ); } 
-		  | TYPE CMD_ATTRIBUTION {$$.c = $1.c + $2.c;}
-		  ;
+		      | TYPE CMD_ATTRIBUTION {$$.c = $1.c + $2.c;}
+		      ;
 
 DECLARATIONS : DECLARATION ';' DECLARATIONS {$$.c = $1.c + $3.c;}
-			 | DECLARATION ';'
-			 ;
+			       | DECLARATION ';'
+			       ;
 
 DECLARATION : TYPE IDS _ATRIB CTE_VAL 
                 { 
@@ -385,11 +443,59 @@ DECLARATION : TYPE IDS _ATRIB CTE_VAL
             | TYPE IDS { declara_variavel( $$, $1, $2, 1 ); } 
 			      ;
 
-TYPE : _STRING  { $$.t = String; }
-	 | _INTEGER { $$.t = Integer; }
-	 | _FLOAT   { $$.t = Float; }
-     | _BOOLEAN { $$.t = Boolean; }
-	 ;
+ARRAYS : ARRAYS ARRAY { 
+                        DEBUG(cout << "Arrays declaration:" << endl);
+                        DEBUG(cout << " " << $$ << endl);
+                        DEBUG(cout << " " << $1 << endl);
+                        DEBUG(cout << " " << $2 << endl);
+                        copia_delimitadores_array($1,$2);
+                        $$.t.dim = $1.t.dim;
+
+                        // ??????
+                        // Não sei porque, mas isso resolve um problema da última
+                        // declaração de array "vazar" para a próxima variável
+                        // Ex: O código abaixo
+                        //
+                        // local integer[2][3][4] x;
+                        // local integer y;
+                        //
+                        // gerava um código C-Assembly assim:
+                        //
+                        // int x[30]; -> Correto
+                        // int y[4]; -> A ultima declaração de array ([4]) vazou para cá
+                        //                                                                _         _
+                        // A linha abaixo corrige esse problema, mas não sei ainda porque  \_(`_`)_/
+                        $2.t.dim.clear();
+                      }
+       |
+       ;
+
+ARRAY : '[' _CTE_INTEGER ']' 
+            { 
+              Range r = {0, toInt($2.v)-1 };
+              $$.t.dim.push_back(r);
+
+              DEBUG(cout << "Array declaration:" << endl); 
+              DEBUG(cout << " " << $$ << endl);
+            }
+      ;
+
+TYPE : T ARRAYS 
+          {
+            DEBUG(cout << "Declaracao de tipo: " << endl);
+            DEBUG(cout << " " << $$ << endl);
+            DEBUG(cout << " " << $1 << endl);
+            DEBUG(cout << " " << $2 << endl);
+            $$ = $1;
+            copia_delimitadores_array($$,$2);
+          }
+     ;
+
+T : _STRING { $$.t = String; }
+  | _INTEGER { $$.t = Integer; }
+  | _FLOAT { $$.t = Float; }
+  | _BOOLEAN { $$.t = Boolean; } 
+	;
 
 IDS : _ID { $$.lst.push_back( $1.v ); } //Quando usamos mais de um ID (regra comentada abaixo), ficamos com mais um conflito de shift/reduce
     ;  
@@ -415,22 +521,22 @@ CLOSE_BLOCK : '}' {
             ;
 
 BLOCK : OPEN_BLOCK CMDS CLOSE_BLOCK { $$.c = $3.c + $2.c + "\n";}//{ $$.c = "\n{\n" + $2.c + "\n}\n";}
-	  | CMD //{ $$.c = "{\n" + $1.c + "\n}\n";}
-	  ;
+      | CMD //{ $$.c = "{\n" + $1.c + "\n}\n";}
+      ;
 
 CMDS : CMD CMDS { $$.c = $1.c + $2.c; }
-	 | { $$.c = ""; }
-	 ;
+     | { $$.c = ""; }
+     ;
 
 CMD : CMD_ATTRIBUTION ';' {$$ = $1; }
-	| CMD_RETURN ';'
-	| CMD_IF
-	| CMD_WHILE
-	| CMD_FOR
-	| PRINT ';'
-	| LOCAL_BLOCK
-	| GLOBAL_BLOCK
-	;
+	  | CMD_RETURN ';'
+	  | CMD_IF
+	  | CMD_WHILE
+	  | CMD_FOR
+	  | PRINT ';'
+	  | LOCAL_BLOCK
+	  | GLOBAL_BLOCK
+	  ;
 
 PRINT : _WRITE '(' EXPRESSION ')'
         { $$.c = "  " + $3.c + "\n  printf( \"%" + $3.t.fmt + "\", " + $3.v + " );\n"; }
@@ -439,13 +545,13 @@ PRINT : _WRITE '(' EXPRESSION ')'
       ;
 
 EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
-		   | EXPRESSION '-' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
-		   | EXPRESSION '*' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
-		   | EXPRESSION '/' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
-		   | EXPRESSION '>' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
-		   | EXPRESSION '<' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
-		   | F { $$ = $1; }
-		   ; 
+		       | EXPRESSION '-' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       | EXPRESSION '*' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       | EXPRESSION '/' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       | EXPRESSION '>' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       | EXPRESSION '<' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       | F { $$ = $1; }
+		       ; 
 
 CTE_VAL : _CTE_STRING  { $$ = $1; $$.t = String;  }
         | _CTE_INTEGER { $$ = $1; $$.t = Integer; }
@@ -454,29 +560,39 @@ CTE_VAL : _CTE_STRING  { $$ = $1; $$.t = String;  }
         | _CTE_FALSE   { $$ = $1; $$.t = Boolean; }
         ;
 
-F : _ID                   { busca_tipo_da_variavel( $$, $1 ); }
+F : _ID                   { 
+                            busca_tipo_da_variavel( $$, $1 );
+                          }
   | CTE_VAL               { $$ = $1; }
   | '(' EXPRESSION ')'    { $$ = $2; }
   ;
 
-CMD_ATTRIBUTION : LVALUE _ATRIB EXPRESSION { gera_codigo_atribuicao( $$, $1, $3 ); }
-				;
+CMD_ATTRIBUTION : LVALUE ARRAYS _ATRIB EXPRESSION { 
+                                                    DEBUG(cout << "Comando de atribuicao:" << endl);
+                                                    DEBUG(cout << $1 << endl);
+                                                    DEBUG(cout << $2 << endl);
+                                                    DEBUG(cout << $4 << endl);
+
+                                                    $1.t.acc = $2.t.dim;
+                                                    gera_codigo_atribuicao( $$, $1, $4 ); 
+                                                  }
+				        ;
             
 LVALUE : _ID { busca_tipo_da_variavel( $$, $1 ); }
        ; 
 
 CMD_RETURN : _RETURN EXPRESSION { $$.c = $2.c + "  return " + $2.v + ";"; }
-	   	   ;
+	   	     ;
 
 CMD_IF : _IF EXPRESSION ':' BLOCK {Atributo dummy; gera_cmd_if( $$, $2, $4, dummy );}
-	   | _IF EXPRESSION ':' BLOCK _ELSE BLOCK {gera_cmd_if( $$, $2, $4, $6 ); }
-	   ;
+	     | _IF EXPRESSION ':' BLOCK _ELSE BLOCK {gera_cmd_if( $$, $2, $4, $6 ); }
+	     ;
 
 CMD_WHILE : _WHILE EXPRESSION ':' BLOCK { gera_cmd_while($$, $2, $4); }
-		  ;
+		      ;
 
 CMD_FOR : _FOR DECLARATION ',' EXPRESSION ',' CMD_ATTRIBUTION ':' BLOCK { gera_cmd_for($$, $2, $4, $6, $8);}
-		;
+		    ;
 
 %%
 
