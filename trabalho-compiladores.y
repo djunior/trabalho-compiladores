@@ -79,19 +79,21 @@ ostream& operator << ( ostream& o, const vector<Range>& r ) {
 }
 
 ostream& operator << ( ostream& o, const Tipo& st ) {
-  o << "Tipo{";
+  o << "Tipo(" << (&st) << ")";
+  o << "{";
   o << "nome = " << st.nome;
   o << ", decl = " << st.decl;
   o << ", fmt = " << st.fmt;
   o << ", dim = " << st.dim;
+  o << ", acc = " << st.acc;
   o << "}";
   return o;     
 }
 
 ostream& operator << ( ostream& o, const Atributo& st ) {
   o << "Atributo{";
-  o << "v = " << st.v;
-  o << ", c = " << st.c;
+ // o << "v = " << st.v;
+ // o << ", c = " << st.c;
   o << ", t = " << st.t;
   o << "}";
   return o;
@@ -267,20 +269,20 @@ void busca_tipo_da_variavel( Atributo& ss, const Atributo& s1 ) {
   }
 }
 
-string trata_acesso_var(const Tipo& t) {
+string trata_acesso_var(const vector<Range>& acc, const vector<Range>& dim) {
   string aux;
   int indice = 0;
-  for( int i = 0; i < t.acc.size(); i++ ) {
+  for( int i = 0; i < acc.size(); i++ ) {
     int tam_restante = 1;
-    int indice_atual = t.acc[i].fim - t.acc[i].inicio + 1;
-    for (int j = i+1; j < t.dim.size(); j++) {
-        int size = t.dim[j].fim - t.dim[j].inicio + 1;
+    int indice_atual = acc[i].fim - acc[i].inicio + 1;
+    for (int j = i+1; j < dim.size(); j++) {
+        int size = dim[j].fim - dim[j].inicio + 1;
         tam_restante *= size;
     }
     indice += indice_atual*tam_restante;
   }
     //aux += "[" + toString( t.dim[i].fim - t.dim[i].inicio + 1 )+ "]";
-  if (t.acc.size() > 0)
+  if (acc.size() > 0)
     aux = "[" + toString(indice) + "]";
 
   return aux;         
@@ -294,7 +296,7 @@ void gera_codigo_atribuicao( Atributo& ss,
     if (esq.t.nome == "string") {
       ss.c = esq.c + dir.c + " " + " strncpy( " + esq.v + ", " + dir.v + ", " + toString(esq.t.dim[0].fim) + " );\n";
     } else {
-      ss.c = esq.c + dir.c + " " + esq.v + trata_acesso_var(esq.t) + " = " + dir.v + ";\n";
+      ss.c = esq.c + dir.c + " " + esq.v + trata_acesso_var(esq.t.acc,esq.t.dim) + " = " + dir.v + ";\n";
     }
     DEBUG(cout << "gera_codigo_atribuicao:" << endl);
     DEBUG(cout << " " << ss << endl);
@@ -313,22 +315,28 @@ void gera_codigo_operador( Atributo& ss,
                            const Atributo& dir ) {
 
   DEBUG(cout << "Gera Codigo operador:" << endl);
-  DEBUG(cout << "  " << esq << endl);
-  DEBUG(cout << "  " << op << endl);
-  DEBUG(cout << "  " << dir << endl);
+  DEBUG(cout << "  esq = " << esq << endl);
+  DEBUG(cout << "  op = " << op << endl);
+  DEBUG(cout << "  dir = " << dir << endl);
 
   if( tro.find( op.v ) != tro.end() ) {
     if( tro[op.v].find( par( esq.t, dir.t ) ) != tro[op.v].end() ) {
+      
       ss.t =  tro[op.v][par( esq.t, dir.t )];
       ss.v = gera_nome_variavel(ss.t); // Precisa gerar um nome de variável temporária.
+
       if (ss.t.nome == "string") {
+      
         ss.c = esq.c + dir.c + " " + "strncat( " + ss.v + ", " + esq.v + ", " + toString(esq.t.dim[0].fim) + " );\n";
         ss.c = ss.c + "strncat(" + ss.v + ", " + dir.v + ", " + toString(dir.t.dim[0].fim) + ");\n";
+      
       } else {
+
         ss.c = esq.c + dir.c + "  " + ss.v + " = " + esq.v + op.v + dir.v + ";\n";
+
       }
 
-      DEBUG(cout << "  " << ss << endl);
+      DEBUG(cout << "  saida = " << ss << endl);
     }
     else
       erro( "O operador '" + op.v + "' não está definido para os tipos " + esq.t.nome + " e " + dir.t.nome + "." );
@@ -445,49 +453,73 @@ DECLARATION : TYPE IDS _ATRIB CTE_VAL
 
 ARRAYS : ARRAYS ARRAY { 
                         DEBUG(cout << "Arrays declaration:" << endl);
-                        DEBUG(cout << " " << $$ << endl);
-                        DEBUG(cout << " " << $1 << endl);
-                        DEBUG(cout << " " << $2 << endl);
+                        DEBUG(cout << " BEFORE:" << endl);
+                        DEBUG(cout << "   ARRAYS = " << $1 << endl);
+                        DEBUG(cout << "   ARRAY = " << $2 << endl);
+                        DEBUG(cout << "   SAIDA = " << $$ << endl);
+
                         copia_delimitadores_array($1,$2);
                         $$.t.dim = $1.t.dim;
 
-                        // ??????
-                        // Não sei porque, mas isso resolve um problema da última
-                        // declaração de array "vazar" para a próxima variável
-                        // Ex: O código abaixo
-                        //
-                        // local integer[2][3][4] x;
-                        // local integer y;
-                        //
-                        // gerava um código C-Assembly assim:
-                        //
-                        // int x[30]; -> Correto
-                        // int y[4]; -> A ultima declaração de array ([4]) vazou para cá
-                        //                                                                _         _
-                        // A linha abaixo corrige esse problema, mas não sei ainda porque  \_(`_`)_/
-                        $2.t.dim.clear();
+                        DEBUG(cout << " AFTER:" << endl);
+                        DEBUG(cout << "   ARRAYS = " << $1 << endl);
+                        DEBUG(cout << "   ARRAY = " << $2 << endl);
+                        DEBUG(cout << "   SAIDA = " << $$ << endl);                        
                       }
-       |
+       |  { 
+            DEBUG(cout << "ARRAYS:" << endl);
+            DEBUG(cout << " ARRAYS -> Empty" << endl);
+            DEBUG(cout << " SAIDA = " << $$ << endl);
+            DEBUG(cout << " Integer = " << Integer << endl);
+
+            // ??????
+            // Não sei porque, mas isso resolve um problema da última
+            // declaração de array "vazar" para a próxima variável
+            // Ex: O código abaixo
+            //
+            // local integer[2][3][4] x;
+            // local integer y;
+            //
+            // gerava um código C-Assembly assim:
+            //
+            // int x[30]; -> Correto
+            // int y[4]; -> A ultima declaração de array ([4]) vazou para cá
+            //                                                                         
+            // A linha abaixo corrige esse problema, mas não sei ainda porque ¯\_(ツ)_/¯
+            $$.t.acc.clear();
+            $$.t.dim.clear();
+          }
        ;
 
 ARRAY : '[' _CTE_INTEGER ']' 
             { 
+              DEBUG(cout << "Array:" << endl); 
+              DEBUG(cout << " BEFORE:" << endl);
+              DEBUG(cout << "   INDICE = " << $2 << endl);
+              DEBUG(cout << "   SAIDA = " << $$ << endl);
+
               Range r = {0, toInt($2.v)-1 };
               $$.t.dim.push_back(r);
 
-              DEBUG(cout << "Array declaration:" << endl); 
-              DEBUG(cout << " " << $$ << endl);
+              DEBUG(cout << " AFTER:" << endl);
+              DEBUG(cout << "   INDICE = " << $2 << endl);
+              DEBUG(cout << "   SAIDA = " << $$ << endl);
             }
       ;
 
 TYPE : T ARRAYS 
           {
             DEBUG(cout << "Declaracao de tipo: " << endl);
-            DEBUG(cout << " " << $$ << endl);
-            DEBUG(cout << " " << $1 << endl);
-            DEBUG(cout << " " << $2 << endl);
+            DEBUG(cout << " BEFORE:" << endl);
+            DEBUG(cout << "   T = " << $1 << endl);
+            DEBUG(cout << "   ARRAYS = " << $2 << endl);
+            DEBUG(cout << "   SAIDA = " << $$ << endl);
             $$ = $1;
             copia_delimitadores_array($$,$2);
+            DEBUG(cout << " AFTER:" << endl);
+            DEBUG(cout << "   T = " << $1 << endl);
+            DEBUG(cout << "   ARRAYS = " << $2 << endl);
+            DEBUG(cout << "   SAIDA = " << $$ << endl);
           }
      ;
 
@@ -539,9 +571,17 @@ CMD : CMD_ATTRIBUTION ';' {$$ = $1; }
 	  ;
 
 PRINT : _WRITE '(' EXPRESSION ')'
-        { $$.c = "  " + $3.c + "\n  printf( \"%" + $3.t.fmt + "\", " + $3.v + " );\n"; }
+        { 
+          DEBUG(cout << "PRINT:" << endl);
+          DEBUG(cout << "  E = " << $3 << endl);
+          $$.c = "  " + $3.c + "\n  printf( \"%" + $3.t.fmt + "\", " + $3.v + " );\n"; 
+        }
       | _WRITELN '(' EXPRESSION ')'
-        { $$.c = "  " + $3.c + "\n  printf( \"%" + $3.t.fmt + "\\n\", " + $3.v + " );\n"; }
+        { 
+          DEBUG(cout << "PRINTLN:" << endl);
+          DEBUG(cout << "  E = " << $3 << endl);
+          $$.c = "  " + $3.c + "\n  printf( \"%" + $3.t.fmt + "\\n\", " + $3.v + " );\n"; 
+        }
       ;
 
 EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
@@ -560,8 +600,23 @@ CTE_VAL : _CTE_STRING  { $$ = $1; $$.t = String;  }
         | _CTE_FALSE   { $$ = $1; $$.t = Boolean; }
         ;
 
-F : _ID                   { 
+F : _ID ARRAYS            { 
+                            DEBUG(cout << "F:" << endl);
+
+                            DEBUG(cout << " BEGIN:" << endl); 
+                            DEBUG(cout << "   _ID = " << $1 << endl); 
+                            DEBUG(cout << "   ARRAYS = " << $2 << endl); 
+                            DEBUG(cout << "   SAIDA = " << $$ << endl);
+
                             busca_tipo_da_variavel( $$, $1 );
+                            string temp = gera_nome_variavel($$.t);
+                            $$.c = temp + " = " + $$.v + trata_acesso_var($2.t.dim, $$.t.dim) + ";\n";
+                            $$.v = temp;
+
+                            DEBUG(cout << " AFTER:" << endl); 
+                            DEBUG(cout << "   _ID = " << $1 << endl); 
+                            DEBUG(cout << "   ARRAYS = " << $2 << endl); 
+                            DEBUG(cout << "   SAIDA = " << $$ << endl);
                           }
   | CTE_VAL               { $$ = $1; }
   | '(' EXPRESSION ')'    { $$ = $2; }
@@ -569,12 +624,19 @@ F : _ID                   {
 
 CMD_ATTRIBUTION : LVALUE ARRAYS _ATRIB EXPRESSION { 
                                                     DEBUG(cout << "Comando de atribuicao:" << endl);
-                                                    DEBUG(cout << $1 << endl);
-                                                    DEBUG(cout << $2 << endl);
-                                                    DEBUG(cout << $4 << endl);
+                                                    DEBUG(cout << " BEFORE:" << endl);
+                                                    DEBUG(cout << "   LVALUE = " << $1 << endl);
+                                                    DEBUG(cout << "   ARRAYS = " << $2 << endl);
+                                                    DEBUG(cout << "   E = " << $4 << endl);
 
                                                     $1.t.acc = $2.t.dim;
                                                     gera_codigo_atribuicao( $$, $1, $4 ); 
+
+                                                    DEBUG(cout << " AFTER:" << endl);
+                                                    DEBUG(cout << "   LVALUE = " << $1 << endl);
+                                                    DEBUG(cout << "   ARRAYS = " << $2 << endl);
+                                                    DEBUG(cout << "   E = " << $4 << endl);
+
                                                   }
 				        ;
             
@@ -660,6 +722,11 @@ void inicializa_tipos() {
   Range r = { 0, 255 };
   
   String.dim.push_back( r );
+
+  DEBUG(cout << "Integer: " << Integer << endl);
+  DEBUG(cout << "String: " << String << endl);
+  DEBUG(cout << "Float: " << Float << endl);
+  DEBUG(cout << "Boolean: " << Boolean << endl);
 }
 
 int main( int argc, char* argv[] )
