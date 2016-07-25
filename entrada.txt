@@ -24,10 +24,14 @@ main : {
 		integer y = 5;
 		integer z = 10;
 		float num = 7.7;
+		string text = "oi";
 	}
 
     write("O valor de num é = ");
     writeln(num);
+    
+    write("Teste string = ");
+    writeln(text);
     
     write("x + num = ");
     writeln(x + num);
@@ -66,9 +70,9 @@ main : {
 	}
 
 	writeln("Contagem de 0 a 9 com for");
-	for integer n = 0, n < 10, n = n + 1: {
-		write(" n = ");
-		writeln(n);
+	for i = 0, i < 10, i = i + 1: {
+		write(" i = ");
+		writeln(i);
 	}
 
 	write("a = ");

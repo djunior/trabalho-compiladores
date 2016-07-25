@@ -592,7 +592,8 @@ CMD_WHILE : _WHILE EXPRESSION ':' BLOCK { gera_cmd_while($$, $2, $4); }
 		      ;
 
 CMD_FOR : _FOR DECLARATION ',' EXPRESSION ',' CMD_ATTRIBUTION ':' BLOCK { gera_cmd_for($$, $2, $4, $6, $8);}
-		    ;
+          | _FOR CMD_ATTRIBUTION ',' EXPRESSION ',' CMD_ATTRIBUTION ':' BLOCK { gera_cmd_for($$, $2, $4, $6, $8);}
+		  ;
 
 %%
 
