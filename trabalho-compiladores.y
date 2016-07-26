@@ -54,6 +54,7 @@ typedef map<string,Tipo> TabelaSimbolos;
 map< string, map< string, Tipo > > tro; // tipo_resultado_operacao;
 map<string,int> temp_global;
 map< string, int > nlabel;
+map<string,Tipo> tf;
 
 vector< TabelaSimbolos > symbol_table_stack;
 
@@ -253,6 +254,7 @@ void declara_variavel( Atributo& ss,
   }
 }
 
+
 void busca_tipo_da_variavel( Atributo& ss, const Atributo& s1 ) {
   int found = 0;
   for (vector<TabelaSimbolos>::reverse_iterator it = symbol_table_stack.rbegin(); it != symbol_table_stack.rend(); it++) {
@@ -298,11 +300,12 @@ void gera_codigo_atribuicao( Atributo& ss,
     } else {
       ss.c = esq.c + dir.c + " " + esq.v + trata_acesso_var(esq.t.acc,esq.t.dim) + " = " + dir.v + ";\n";
     }
-    DEBUG(cout << "gera_codigo_atribuicao:" << endl);
+    
+  }
+  DEBUG(cout << "gera_codigo_atribuicao:" << endl);
     DEBUG(cout << " " << ss << endl);
     DEBUG(cout << " " << esq << endl);
     DEBUG(cout << " " << dir << endl);
-  }
 }
 
 string par( Tipo a, Tipo b ) {
@@ -417,7 +420,7 @@ FUNCTION_NAME : _ID {
                     }
               ;
 
-FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK  { 
+FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK  { tf[$1.v] = $4.t;
                                                       $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + gera_declaracao_variaveis() + $5.c + "\n}\n"; 
                                                       symbol_table_stack.pop_back();
                                                     }
@@ -620,6 +623,10 @@ F : _ID ARRAYS            {
                           }
   | CTE_VAL               { $$ = $1; }
   | '(' EXPRESSION ')'    { $$ = $2; }
+  | _ID '(' EXPRESSION ')'   { $$.v = gera_nome_variavel( tf[$1.v] );
+                               $$.c = $3.c +
+                               "  " + $$.v + " = " + $1.v + "( " + $3.v + " );\n"; 
+                               $$.t = tf[$1.v]; }
   ;
 
 CMD_ATTRIBUTION : LVALUE ARRAYS _ATRIB EXPRESSION { 

@@ -10,7 +10,7 @@ inc integer x: integer {
 	<= x + a + b;
 }
 
-dec integer x: integer {
+decrem integer x: integer {
 	<= x - 1;
 }
 
@@ -24,14 +24,10 @@ main : {
 		integer y = 5;
 		integer z = 10;
 		float num = 7.7;
-		string text = "oi";
 	}
 
     write("O valor de num é = ");
     writeln(num);
-    
-    write("Teste string = ");
-    writeln(text);
     
     write("x + num = ");
     writeln(x + num);
@@ -50,6 +46,16 @@ main : {
 	write("y = ");
 	writeln(y);
 
+    x = 8;
+    x = decrem ( x );
+    write("x decrem = ");
+    writeln(x);
+    
+    x = inc ( x );
+    write("x inc = ");
+    writeln(x);
+    
+    
     if z < 7 :
     {
 	  write("z = ");
@@ -76,5 +82,5 @@ main : {
 	}
 
 	write("a = ");
-	writeln(a);
+	#writeln(a);
 }
