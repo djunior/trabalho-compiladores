@@ -369,7 +369,7 @@ void copia_delimitadores_array( Atributo& ss,
 
 %}
 
-%token _ID _PROGRAM _MAIN _WRITELN _WRITE _VAR _IF _ELSE _WHILE
+%token _ID _PROGRAM _MAIN _WRITELN _WRITE _READLN _READ _VAR _IF _ELSE _WHILE
 %token _FOR _ATRIB _RETURN _FUNCTION _GLOBAL _GLOBALS _LOCAL _LOCALS
 %token _INTEGER _STRING _BOOLEAN _FLOAT
 
@@ -425,8 +425,8 @@ FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK  { tf[$1.v] = $4.t;
                                                       symbol_table_stack.pop_back();
                                                     }
 		     | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + $4.c + "\n}\n"; }
-		     | _ID ':' TYPE BLOCK { $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + $4.c + "\n}\n"; }
-		     | _ID ':' BLOCK { $$.c = "void " + $1.v + "( )" + "\n{\n" + $3.c + "\n}\n"; }
+		     | FUNCTION_NAME ':' TYPE BLOCK { tf[$1.v] = $4.t; $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + $4.c + "\n}\n"; }
+		     | FUNCTION_NAME ':' BLOCK { $$.c = "void " + $1.v + "( )" + "\n{\n" + $3.c + "\n}\n"; }
          ;
 
 PARAMETERS : PARAMETER ',' PARAMETERS {
@@ -569,6 +569,7 @@ CMD : CMD_ATTRIBUTION ';' {$$ = $1; }
 	  | CMD_WHILE
 	  | CMD_FOR
 	  | PRINT ';'
+	  | SCAN ';'
 	  | LOCAL_BLOCK
 	  | GLOBAL_BLOCK
 	  ;
@@ -586,6 +587,12 @@ PRINT : _WRITE '(' EXPRESSION ')'
           $$.c = "  " + $3.c + "\n  printf( \"%" + $3.t.fmt + "\\n\", " + $3.v + " );\n"; 
         }
       ;
+      
+SCAN    : _READLN '(' LVALUE ')'  
+          { $$.c = "  scanf( \"%"+ $3.t.fmt + "\", &"+ $3.v + " );\n"; }
+        | _READ '(' LVALUE ')'  
+          { $$.c = "  scanf( \"%"+ $3.t.fmt + "\", &"+ $3.v + " );\n"; }
+        ;   
 
 EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		       | EXPRESSION '-' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
@@ -623,11 +630,15 @@ F : _ID ARRAYS            {
                           }
   | CTE_VAL               { $$ = $1; }
   | '(' EXPRESSION ')'    { $$ = $2; }
-  | _ID '(' EXPRESSION ')'   { $$.v = gera_nome_variavel( tf[$1.v] );
+  | _ID '(' EXPRESSIONS ')'   { $$.v = gera_nome_variavel( tf[$1.v] );
                                $$.c = $3.c +
                                "  " + $$.v + " = " + $1.v + "( " + $3.v + " );\n"; 
                                $$.t = tf[$1.v]; }
   ;
+  
+EXPRESSIONS : EXPRESSION ',' EXPRESSIONS { $$.c = $1.c + $3.c; $$.v = $1.v + ", " + $3.v; }
+            | EXPRESSION
+            ;
 
 CMD_ATTRIBUTION : LVALUE ARRAYS _ATRIB EXPRESSION { 
                                                     DEBUG(cout << "Comando de atribuicao:" << endl);

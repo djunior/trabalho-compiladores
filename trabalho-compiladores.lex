@@ -12,6 +12,8 @@ COMMENT "#"[^\n]*
 PROGRAM 	program
 WRITELN		writeln
 WRITE		write
+READLN		readln
+READ		read
 VAR			var
 IF			if
 ELSE		else
@@ -49,6 +51,8 @@ void trata_folha();
 {PROGRAM} 	{ trata_folha(); return _PROGRAM; }
 {WRITELN} 	{ trata_folha(); return _WRITELN; }
 {WRITE} 	{ trata_folha(); return _WRITE; }
+{READLN} 	{ trata_folha(); return _READLN; }
+{READ} 	    { trata_folha(); return _READ; }
 {VAR} 		{ trata_folha(); return _VAR; }
 {IF} 		{ trata_folha(); return _IF; }
 {ELSE} 		{ trata_folha(); return _ELSE; }

@@ -14,6 +14,10 @@ decrem integer x: integer {
 	<= x - 1;
 }
 
+sum integer x, integer y: integer{
+    <= x + y;
+}
+
 main : {
 
 	a = "hello" + ", world " + " I'm here!";
@@ -53,6 +57,15 @@ main : {
     
     x = inc ( x );
     write("x inc = ");
+    writeln(x);
+    
+    z = sum ( x, y );
+    write("x + y  = ");
+    writeln(z);
+    
+    writeln("Insira um numero inteiro:");
+    readln(x);
+    write("O valor digitado foi: ");
     writeln(x);
     
     
