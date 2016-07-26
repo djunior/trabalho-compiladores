@@ -82,7 +82,7 @@ ARRAY : '[' TK_CINT ']'
       | 
       ;
 
-COMANDOS : COMANDO ';' COMANDOS
+COMANDOS : COMANDOS COMANDO ';'
 	   |
 	   ;
 
@@ -151,7 +151,7 @@ F : TK_CINT
   | TK_STR
   ;
 
-PARAMS : F ',' PARAMS
+PARAMS : PARAMS ',' F
        | F
 
 INDICE : TK_CINT
