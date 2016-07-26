@@ -52,9 +52,12 @@ void erro( string );
 typedef map<string,Tipo> TabelaSimbolos;
 
 map< string, map< string, Tipo > > tro; // tipo_resultado_operacao;
-map<string,int> temp_global;
-map< string, int > nlabel;
-map<string,Tipo> tf;
+map< string, int > temp_global; // tabela de geração de nome de vars temporárias globais
+map< string, int > temp_local;  // tabela de geração de nome de vars temporárias locais
+map< string, int > nlabel;  // tabela de geração de nome de labels
+map< string, Tipo > tf; // tabela de funções
+
+bool escopo_local = false;
 
 vector< TabelaSimbolos > symbol_table_stack;
 
@@ -123,7 +126,7 @@ string gera_nome_variavel(Tipo t, int n) {
 }
 
 string gera_nome_variavel(Tipo t) {
-  return gera_nome_variavel(t,++temp_global[t.nome]);
+  return gera_nome_variavel(t,++(escopo_local ? temp_local : temp_global)[t.nome]);
 }
 
 string gera_nome_label( string cmd ) {
@@ -414,6 +417,7 @@ LOCAL_BLOCK : _LOCALS '{' DECLARATIONS '}' {$$.c = $3.c;}
 			      ;
 
 FUNCTION_NAME : _ID { 
+                      escopo_local = true;
                       TabelaSimbolos ts;
                       symbol_table_stack.push_back(ts); 
                       $$ = $1;
@@ -421,12 +425,13 @@ FUNCTION_NAME : _ID {
               ;
 
 FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK  { tf[$1.v] = $4.t;
-                                                      $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + gera_declaracao_variaveis() + $5.c + "\n}\n"; 
+                                                      $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $5.c + "\n}\n"; 
                                                       symbol_table_stack.pop_back();
+                                                      escopo_local = false;
                                                     }
-		     | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + $4.c + "\n}\n"; }
-		     | FUNCTION_NAME ':' TYPE BLOCK { tf[$1.v] = $4.t; $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + $4.c + "\n}\n"; }
-		     | FUNCTION_NAME ':' BLOCK { $$.c = "void " + $1.v + "( )" + "\n{\n" + $3.c + "\n}\n"; }
+		     | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); escopo_local = false; $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $4.c + "\n}\n"; }
+		     | FUNCTION_NAME ':' TYPE BLOCK { escopo_local = false; tf[$1.v] = $4.t; $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $4.c + "\n}\n"; }
+		     | FUNCTION_NAME ':' BLOCK { escopo_local = false; $$.c = "void " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $3.c + "\n}\n"; }
          ;
 
 PARAMETERS : PARAMETER ',' PARAMETERS {
@@ -517,8 +522,10 @@ TYPE : T ARRAYS
             DEBUG(cout << "   T = " << $1 << endl);
             DEBUG(cout << "   ARRAYS = " << $2 << endl);
             DEBUG(cout << "   SAIDA = " << $$ << endl);
+
             $$ = $1;
             copia_delimitadores_array($$,$2);
+            
             DEBUG(cout << " AFTER:" << endl);
             DEBUG(cout << "   T = " << $1 << endl);
             DEBUG(cout << "   ARRAYS = " << $2 << endl);
@@ -540,8 +547,8 @@ IDS : _ID ',' IDS { $$.lst = $1.lst; $$.lst.push_back( $3.v ); }
     | _ID         { $$.lst.push_back( $1.v ); }
     ;  
 */
-MAIN : _MAIN ':' BLOCK
-            { $$.c = "int main() \n{" + $3.c + "\n}"; }
+MAIN : _MAIN { symbol_table_stack.push_back(TabelaSimbolos()); escopo_local = true;} ':' BLOCK
+            { $$.c = "int main() \n{" + declara_var_temp(temp_local) + gera_declaracao_variaveis()+ $4.c + "\n}"; symbol_table_stack.pop_back(); escopo_local = false; }
 
 OPEN_BLOCK : '{'  { 
                     // TabelaSimbolos ts;
@@ -620,7 +627,11 @@ F : _ID ARRAYS            {
 
                             busca_tipo_da_variavel( $$, $1 );
                             string temp = gera_nome_variavel($$.t);
-                            $$.c = temp + " = " + $$.v + trata_acesso_var($2.t.dim, $$.t.dim) + ";\n";
+                            if ($$.t.nome == String.nome) {
+                              $$.c = "strncpy(" + temp + ", " + $$.v + trata_acesso_var($2.t.dim, $$.t.dim) + ", " + toString($$.t.dim[0].fim) + ");\n";
+                            } else {
+                              $$.c = temp + " = " + $$.v + trata_acesso_var($2.t.dim, $$.t.dim) + ";\n";
+                            }
                             $$.v = temp;
 
                             DEBUG(cout << " AFTER:" << endl); 
@@ -672,8 +683,8 @@ CMD_WHILE : _WHILE EXPRESSION ':' BLOCK { gera_cmd_while($$, $2, $4); }
 		      ;
 
 CMD_FOR : _FOR DECLARATION ',' EXPRESSION ',' CMD_ATTRIBUTION ':' BLOCK { gera_cmd_for($$, $2, $4, $6, $8);}
-          | _FOR CMD_ATTRIBUTION ',' EXPRESSION ',' CMD_ATTRIBUTION ':' BLOCK { gera_cmd_for($$, $2, $4, $6, $8);}
-		  ;
+        | _FOR CMD_ATTRIBUTION ',' EXPRESSION ',' CMD_ATTRIBUTION ':' BLOCK { gera_cmd_for($$, $2, $4, $6, $8);}
+		    ;
 
 %%
 
