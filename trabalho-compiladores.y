@@ -434,7 +434,7 @@ FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK  { tf[$1.v] = $4.t;
 		     | FUNCTION_NAME ':' BLOCK { escopo_local = false; $$.c = "void " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $3.c + "\n}\n"; }
          ;
 
-PARAMETERS : PARAMETER ',' PARAMETERS {
+PARAMETERS : PARAMETERS ',' PARAMETER {
                                         $$.c = $1.c + ", " + $3.c;
                                       }
 		       | PARAMETER 
@@ -444,7 +444,7 @@ PARAMETER : TYPE IDS { declara_variavel( $$, $1, $2, 2 ); }
 		      | TYPE CMD_ATTRIBUTION {$$.c = $1.c + $2.c;}
 		      ;
 
-DECLARATIONS : DECLARATION ';' DECLARATIONS {$$.c = $1.c + $3.c;}
+DECLARATIONS : DECLARATIONS DECLARATION ';' {$$.c = $1.c + $2.c;}
 			       | DECLARATION ';'
 			       ;
 
@@ -566,7 +566,7 @@ BLOCK : OPEN_BLOCK CMDS CLOSE_BLOCK { $$.c = $3.c + $2.c + "\n";}//{ $$.c = "\n{
       | CMD //{ $$.c = "{\n" + $1.c + "\n}\n";}
       ;
 
-CMDS : CMD CMDS { $$.c = $1.c + $2.c; }
+CMDS : CMDS CMD { $$.c = $1.c + $2.c; }
      | { $$.c = ""; }
      ;
 
@@ -647,7 +647,7 @@ F : _ID ARRAYS            {
                                $$.t = tf[$1.v]; }
   ;
   
-EXPRESSIONS : EXPRESSION ',' EXPRESSIONS { $$.c = $1.c + $3.c; $$.v = $1.v + ", " + $3.v; }
+EXPRESSIONS : EXPRESSIONS ',' EXPRESSION { $$.c = $1.c + $3.c; $$.v = $1.v + ", " + $3.v; }
             | EXPRESSION
             ;
 
