@@ -425,11 +425,11 @@ FUNCTION_NAME : _ID {
                     }
               ;
 
-FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK  { tf[$1.v] = $4.t;
-                                                      $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $5.c + "\n}\n"; 
-                                                      symbol_table_stack.pop_back();
-                                                      escopo_local = false;
-                                                    }
+FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE { tf[$1.v] = $4.t; } BLOCK   { 
+                                                                            $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $6.c + "\n}\n"; 
+                                                                            symbol_table_stack.pop_back();
+                                                                            escopo_local = false;
+                                                                          }
 		     | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); escopo_local = false; $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $4.c + "\n}\n"; }
 		     | FUNCTION_NAME ':' TYPE BLOCK { escopo_local = false; tf[$1.v] = $4.t; $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $4.c + "\n}\n"; }
 		     | FUNCTION_NAME ':' BLOCK { escopo_local = false; $$.c = "void " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $3.c + "\n}\n"; }
@@ -437,8 +437,11 @@ FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK  { tf[$1.v] = $4.t;
 
 PARAMETERS : PARAMETERS ',' PARAMETER {
                                         $$.c = $1.c + ", " + $3.c;
+                                        if ($3.t.dim.size() > 0) {
+                                          $$.c += "[]";
+                                        }
                                       }
-		       | PARAMETER 
+		       | PARAMETER  { if ($1.t.dim.size() > 0) $$.c += "[]"; }
 		       ;
 		   
 PARAMETER : TYPE IDS { declara_variavel( $$, $1, $2, 2 ); } 
@@ -580,6 +583,7 @@ CMD : CMD_ATTRIBUTION ';' {$$ = $1; }
 	  | SCAN ';'
 	  | LOCAL_BLOCK
 	  | GLOBAL_BLOCK
+    | FUNCTION_CALL ';'
 	  ;
 
 PRINT : _WRITE '(' EXPRESSION ')'
@@ -622,6 +626,19 @@ CTE_VAL : _CTE_STRING  { $$ = $1; $$.t = String;  }
         | _CTE_FALSE   { $$ = $1; $$.t = Boolean; }
         ;
 
+FUNCTION_CALL : _ID '(' EXPRESSIONS ')'   { 
+                                            $$.c = $3.c + "  ";
+                                            if (tf.find($1.v) != tf.end()) {
+                                              $$.v = gera_nome_variavel( tf[$1.v] );
+                                              $$.c += $$.v + " = ";
+                                              $$.t = tf[$1.v]; 
+                                            }
+                                            $$.c += $1.v + "( " + $3.v + " );\n"; 
+                                            
+                                          }
+
+              ;
+
 F : _ID ARRAYS            { 
                             DEBUG(cout << "F:" << endl);
 
@@ -646,10 +663,7 @@ F : _ID ARRAYS            {
                           }
   | CTE_VAL               { $$ = $1; }
   | '(' EXPRESSION ')'    { $$ = $2; }
-  | _ID '(' EXPRESSIONS ')'   { $$.v = gera_nome_variavel( tf[$1.v] );
-                               $$.c = $3.c +
-                               "  " + $$.v + " = " + $1.v + "( " + $3.v + " );\n"; 
-                               $$.t = tf[$1.v]; }
+  | FUNCTION_CALL         { $$ = $1; }
   ;
   
 EXPRESSIONS : EXPRESSIONS ',' EXPRESSION { $$.c = $1.c + $3.c; $$.v = $1.v + ", " + $3.v; }
