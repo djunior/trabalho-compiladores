@@ -40,6 +40,7 @@ struct Atributo {
   string v, c;
   Tipo t;
   vector<string> lst;
+  vector<string> lst_temp; // Usado em FUNCTION_CALL
 }; 
 
 #define YYSTYPE Atributo
@@ -54,7 +55,7 @@ typedef map<string,Tipo> TabelaSimbolos;
 struct Funcao {
   string nome;
   Tipo t;
-  vector<Atributo> params;
+  map<string,Tipo> params;
   map<string,int> ordemParams;
 };
 
@@ -432,9 +433,9 @@ FUNCTION_NAME : _ID {
                       symbol_table_stack.push_back(ts); 
                       $$ = $1;
 
-                      Funcao f; 
-                      f.nome = $1.v; 
-                      tf[f.nome] = f;
+                      Funcao f;
+                      f.nome = $1.v;
+                      tf[$1.v] = f;
                     }
               ;
 
@@ -448,9 +449,9 @@ FUNCTION : FUNCTION_NAME
                                         tf[$1.v].t = $4.t;
                                         for (int i = 0; i < $2.lst.size(); i++) {
                                           Atributo a;
-                                          a.v = $2.lst[i];
                                           busca_tipo_da_variavel(a,$2.v);
-                                          tf[$1.v].params.push_back(a);
+                                          tf[$1.v].params[$2.lst[i]] = a.t;
+                                          tf[$1.v].ordemParams[$2.lst[i]] = i;
                                         }
                                         $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $5.c + "\n}\n"; 
                                         symbol_table_stack.pop_back();
@@ -680,19 +681,42 @@ CTE_VAL : _CTE_STRING  { $$ = $1; $$.t = String;  }
         | _CTE_FALSE   { $$ = $1; $$.t = Boolean; }
         ;
 
-FUNC_PARAMS : FUNC_PARAMS ',' FUNC_PARAM
-            | FUNC_PARAM
+FUNC_PARAMS : FUNC_PARAMS ',' FUNC_PARAM { 
+                                            $$.c = $1.c + $3.c; 
+                                            $1.lst.push_back($3.v);
+                                            $1.lst_temp.push_back($3.lst_temp.back());
+                                            $$.lst = $1.lst;
+                                            $$.lst_temp = $1.lst_temp;
+                                          }
+            | FUNC_PARAM { $$.c = $1.c; $$.lst.push_back($1.v); $$.lst_temp.push_back($1.lst_temp.back()); }
             ;
 
-FUNC_PARAM : _ID _ATRIB EXPRESSION {}
+FUNC_PARAM : _ID _ATRIB EXPRESSION  {
+                                      string temp_name = gera_nome_variavel($3.t);
+                                      $$.c = $3.c + "  " + temp_name + " = " + $3.v + ";\n"; 
+                                      $$.v = $1.v;
+                                      $$.lst_temp.push_back(temp_name);
+                                    }
            ;
 
 FUNCTION_CALL : _ID '(' FUNC_PARAMS ')' { 
-                                            DEBUG(cout << "F -> _ID ( EXPRESSION )" << endl);
+                                            DEBUG(cout << "FUNCTION_CALL -> _ID ( FUNC_PARAMS )" << endl);
                                             DEBUG(cout << "   " << $1 << endl);
                                             DEBUG(cout << "   " << $3 << endl);
                                             $$.v = gera_nome_variavel( tf[$1.v].t );
-                                            $$.c = $3.c + "  " + $$.v + " = " + $1.v + "( " + $3.v + " );\n"; 
+                                            string params = "";
+                                            vector<string> params_ordered($3.lst.size());
+                                            
+                                            for (int i = 0; i < $3.lst.size(); i++) {
+                                              int indice = tf[$1.v].ordemParams[$3.lst[i]];
+                                              params_ordered[indice] = $3.lst_temp[i];
+                                            }
+
+                                            for (int i = 0; i < $3.lst.size(); i++) {
+                                              params += (params == "" ? "" : ",") + params_ordered[i];
+                                            }
+                                            
+                                            $$.c = $3.c + "  " + $$.v + " = " + $1.v + "( " + params + " );\n"; 
                                             $$.t = tf[$1.v].t; 
                                          }
               | _ID '(' ')'
