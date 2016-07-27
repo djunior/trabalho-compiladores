@@ -379,7 +379,7 @@ void copia_delimitadores_array( Atributo& ss,
 
 %token _CTE_STRING _CTE_INTEGER _CTE_TRUE _CTE_FALSE _CTE_FLOAT
 
-%nonassoc '>' '<' "==" '=' "!="
+%nonassoc '>' '<' '=' _NEQUAL _EQUAL
 %left '+' '-'
 %left '*' '/' '%'
 
@@ -609,8 +609,8 @@ EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 );
 		       | EXPRESSION '>'  EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		       | EXPRESSION '<' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		       | EXPRESSION '%' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
-		       //| EXPRESSION "!=" EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
-		       //| EXPRESSION "==" EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       | EXPRESSION _NEQUAL EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       | EXPRESSION _EQUAL EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		       | F { $$ = $1; }
 		       ; 
 

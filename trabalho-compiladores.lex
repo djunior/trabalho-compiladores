@@ -77,6 +77,8 @@ void trata_folha();
 {CTE_FLOAT} 	{ trata_folha(); return _CTE_FLOAT; }
 
 "<="		{ trata_folha(); return _RETURN; }
+"=="		{ trata_folha(); return _EQUAL; }
+"!="		{ trata_folha(); return _NEQUAL; }
 "="			{ trata_folha(); return _ATRIB; }
 
 {ID}  { trata_folha(); return _ID; }
