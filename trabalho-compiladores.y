@@ -51,11 +51,18 @@ void erro( string );
 
 typedef map<string,Tipo> TabelaSimbolos;
 
+struct Funcao {
+  string nome;
+  Tipo t;
+  vector<Atributo> params;
+  map<string,int> ordemParams;
+};
+
 map< string, map< string, Tipo > > tro; // tipo_resultado_operacao;
 map< string, int > temp_global; // tabela de geração de nome de vars temporárias globais
 map< string, int > temp_local;  // tabela de geração de nome de vars temporárias locais
 map< string, int > nlabel;  // tabela de geração de nome de labels
-map< string, Tipo > tf; // tabela de funções
+map< string, Funcao > tf; // tabela de funções
 
 bool escopo_local = false;
 
@@ -96,8 +103,8 @@ ostream& operator << ( ostream& o, const Tipo& st ) {
 
 ostream& operator << ( ostream& o, const Atributo& st ) {
   o << "Atributo{";
- // o << "v = " << st.v;
- // o << ", c = " << st.c;
+  o << "v = " << st.v;
+  o << ", c = " << st.c;
   o << ", t = " << st.t;
   o << "}";
   return o;
@@ -258,19 +265,22 @@ void declara_variavel( Atributo& ss,
 }
 
 
-void busca_tipo_da_variavel( Atributo& ss, const Atributo& s1 ) {
+void busca_tipo_da_variavel( Atributo& ss, const string nome ) {
+  DEBUG(cout << "busca_tipo_da_variavel" << endl);
+  DEBUG(cout << "   " << ss << endl);
+  DEBUG(cout << "   " << nome << endl);
   int found = 0;
   for (vector<TabelaSimbolos>::reverse_iterator it = symbol_table_stack.rbegin(); it != symbol_table_stack.rend(); it++) {
     TabelaSimbolos ts = (*it);
-    if ( ts.find( s1.v ) != ts.end() ) {
-      ss.t = ts[ s1.v ];
-      ss.v = s1.v;
+    if ( ts.find( nome ) != ts.end() ) {
+      ss.t = ts[ nome ];
+      ss.v = nome;
       found = 1;
       break;
     }
   }
   if (found == 0) {
-    erro("Variável não declarada: " + s1.v);
+    erro("Variável não declarada: " + nome);
   }
 }
 
@@ -421,27 +431,62 @@ FUNCTION_NAME : _ID {
                       TabelaSimbolos ts;
                       symbol_table_stack.push_back(ts); 
                       $$ = $1;
+
+                      Funcao f; 
+                      f.nome = $1.v; 
+                      tf[f.nome] = f;
                     }
               ;
 
-FUNCTION : FUNCTION_NAME PARAMETERS ':' TYPE BLOCK  { tf[$1.v] = $4.t;
-                                                      $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $5.c + "\n}\n"; 
-                                                      symbol_table_stack.pop_back();
-                                                      escopo_local = false;
-                                                    }
-		     | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); escopo_local = false; $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $4.c + "\n}\n"; }
-		     | FUNCTION_NAME ':' TYPE BLOCK { escopo_local = false; tf[$1.v] = $4.t; $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $4.c + "\n}\n"; }
+FUNCTION : FUNCTION_NAME 
+            PARAMETERS ':' TYPE BLOCK { 
+                                        DEBUG(cout << "FUNCTION -> FUNCTION_NAME PARAMETERS : TYPE BLOCK" << endl);
+                                        DEBUG(cout << "   " << $1 << endl);
+                                        DEBUG(cout << "   " << $2 << endl);
+                                        DEBUG(cout << "   " << $4 << endl);
+                                        DEBUG(cout << "   " << $5 << endl);
+                                        tf[$1.v].t = $4.t;
+                                        for (int i = 0; i < $2.lst.size(); i++) {
+                                          Atributo a;
+                                          a.v = $2.lst[i];
+                                          busca_tipo_da_variavel(a,$2.v);
+                                          tf[$1.v].params.push_back(a);
+                                        }
+                                        $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $5.c + "\n}\n"; 
+                                        symbol_table_stack.pop_back();
+                                        escopo_local = false;
+                                      }   
+	     | FUNCTION_NAME PARAMETERS ':' BLOCK { symbol_table_stack.pop_back(); escopo_local = false; $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $4.c + "\n}\n"; }
+		     | FUNCTION_NAME ':' TYPE BLOCK { escopo_local = false; /*tf[$1.v] = $4.t;*/ $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $4.c + "\n}\n"; }
 		     | FUNCTION_NAME ':' BLOCK { escopo_local = false; $$.c = "void " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $3.c + "\n}\n"; }
          ;
 
 PARAMETERS : PARAMETERS ',' PARAMETER {
+                                        DEBUG(cout << "PARAMETERS -> PARAMETERS , PARAMETER" << endl);
+                                        DEBUG(cout << "   " << $1 << endl);
+                                        DEBUG(cout << "   " << $3 << endl);
                                         $$.c = $1.c + ", " + $3.c;
+                                        $1.lst.push_back($3.v);
+                                        $$.lst = $1.lst;
                                       }
-		       | PARAMETER 
+		       | PARAMETER  { 
+                          DEBUG(cout << "PARAMETERS -> PARAMETER" << endl);
+                          DEBUG(cout << "   " << $1 << endl);
+                          $$ = $1; $$.lst.push_back($1.v); 
+                        }
 		       ;
 		   
-PARAMETER : TYPE IDS { declara_variavel( $$, $1, $2, 2 ); } 
-		      | TYPE CMD_ATTRIBUTION {$$.c = $1.c + $2.c;}
+PARAMETER : TYPE IDS { 
+                        DEBUG(cout << "PARAMETER -> TYPE IDS" << endl);
+                        DEBUG(cout << "   " << $1 << endl);
+                        DEBUG(cout << "   " << $2 << endl);
+                        $$.v = $2.v; declara_variavel( $$, $1, $2, 2 ); } 
+		      | TYPE CMD_ATTRIBUTION  {
+                                    DEBUG(cout << "PARAMETER -> TYPE CMD_ATTRIBUTION" << endl);
+                                    DEBUG(cout << "   " << $1 << endl);
+                                    DEBUG(cout << "   " << $2 << endl);
+                                    $$.v = $2.v; $$.c = $1.c + $2.c;
+                                  }
 		      ;
 
 DECLARATIONS : DECLARATIONS DECLARATION ';' {$$.c = $1.c + $2.c;}
@@ -450,17 +495,27 @@ DECLARATIONS : DECLARATIONS DECLARATION ';' {$$.c = $1.c + $2.c;}
 
 DECLARATION : TYPE IDS _ATRIB CTE_VAL 
                 { 
+                  DEBUG(cout << "DECLARATION -> TYPE IDS _ATRIB CTE_VAL" << endl);
+                  DEBUG(cout << "   " << $1 << endl);
+                  DEBUG(cout << "   " << $2 << endl);
+                  DEBUG(cout << "   " << $3 << endl);
+                  DEBUG(cout << "   " << $4 << endl);
                   declara_variavel($$, $1, $2, 1); 
                   $2.t = $$.t;
                   string aux = $$.c;
                   gera_codigo_atribuicao($$,$2,$4);
                   $$.c = aux + $$.c;
                 }
-            | TYPE IDS { declara_variavel( $$, $1, $2, 1 ); } 
+            | TYPE IDS  {
+                          DEBUG(cout << "DECLARATION -> TYPE IDS" << endl);
+                          DEBUG(cout << "   " << $1 << endl);
+                          DEBUG(cout << "   " << $2 << endl); 
+                          declara_variavel( $$, $1, $2, 1 ); 
+                        } 
 			      ;
 
 ARRAYS : ARRAYS ARRAY { 
-                        DEBUG(cout << "Arrays declaration:" << endl);
+                        DEBUG(cout << "ARRAYS -> ARRAYS ARRAY" << endl);
                         DEBUG(cout << " BEFORE:" << endl);
                         DEBUG(cout << "   ARRAYS = " << $1 << endl);
                         DEBUG(cout << "   ARRAY = " << $2 << endl);
@@ -475,8 +530,7 @@ ARRAYS : ARRAYS ARRAY {
                         DEBUG(cout << "   SAIDA = " << $$ << endl);                        
                       }
        |  { 
-            DEBUG(cout << "ARRAYS:" << endl);
-            DEBUG(cout << " ARRAYS -> Empty" << endl);
+            DEBUG(cout << "ARRAYS -> Empty" << endl);
             DEBUG(cout << " SAIDA = " << $$ << endl);
             DEBUG(cout << " Integer = " << Integer << endl);
 
@@ -501,7 +555,7 @@ ARRAYS : ARRAYS ARRAY {
 
 ARRAY : '[' _CTE_INTEGER ']' 
             { 
-              DEBUG(cout << "Array:" << endl); 
+              DEBUG(cout << "ARRAY -> [ _CTE_INTEGER ]" << endl); 
               DEBUG(cout << " BEFORE:" << endl);
               DEBUG(cout << "   INDICE = " << $2 << endl);
               DEBUG(cout << "   SAIDA = " << $$ << endl);
@@ -517,7 +571,7 @@ ARRAY : '[' _CTE_INTEGER ']'
 
 TYPE : T ARRAYS 
           {
-            DEBUG(cout << "Declaracao de tipo: " << endl);
+            DEBUG(cout << "TYPE -> T ARRAYS " << endl);
             DEBUG(cout << " BEFORE:" << endl);
             DEBUG(cout << "   T = " << $1 << endl);
             DEBUG(cout << "   ARRAYS = " << $2 << endl);
@@ -579,26 +633,35 @@ CMD : CMD_ATTRIBUTION ';' {$$ = $1; }
 	  | SCAN ';'
 	  | LOCAL_BLOCK
 	  | GLOBAL_BLOCK
+    | FUNCTION_CALL ';'
 	  ;
 
 PRINT : _WRITE '(' EXPRESSION ')'
         { 
-          DEBUG(cout << "PRINT:" << endl);
+          DEBUG(cout << "PRINT -> _WRITE ( EXPRESSION )" << endl);
           DEBUG(cout << "  E = " << $3 << endl);
           $$.c = "  " + $3.c + "\n  printf( \"%" + $3.t.fmt + "\", " + $3.v + " );\n"; 
         }
       | _WRITELN '(' EXPRESSION ')'
         { 
-          DEBUG(cout << "PRINTLN:" << endl);
+          DEBUG(cout << "PRINTLN -> _WRITELN ( EXPRESSION )" << endl);
           DEBUG(cout << "  E = " << $3 << endl);
           $$.c = "  " + $3.c + "\n  printf( \"%" + $3.t.fmt + "\\n\", " + $3.v + " );\n"; 
         }
       ;
       
-SCAN    : _READLN '(' LVALUE ')'  
-          { $$.c = "  scanf( \"%"+ $3.t.fmt + "\", &"+ $3.v + " );\n"; }
-        | _READ '(' LVALUE ')'  
-          { $$.c = "  scanf( \"%"+ $3.t.fmt + "\", &"+ $3.v + " );\n"; }
+SCAN    : _READLN '(' _ID ')'  
+          { 
+            DEBUG(cout << "SCAN -> _READLN ( LVALUE )" << endl);
+            busca_tipo_da_variavel($3,$3.v);
+            $$.c = "  scanf( \"%"+ $3.t.fmt + "\", &"+ $3.v + " );\n"; 
+          }
+        | _READ '(' _ID ')'  
+          { 
+            DEBUG(cout << "SCAN -> _READ ( LVALUE )" << endl);
+            busca_tipo_da_variavel($3,$3.v);
+            $$.c = "  scanf( \"%"+ $3.t.fmt + "\", &"+ $3.v + " );\n"; 
+          }
         ;   
 
 EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
@@ -617,15 +680,31 @@ CTE_VAL : _CTE_STRING  { $$ = $1; $$.t = String;  }
         | _CTE_FALSE   { $$ = $1; $$.t = Boolean; }
         ;
 
+FUNC_PARAMS : FUNC_PARAMS ',' FUNC_PARAM
+            | FUNC_PARAM
+            ;
+
+FUNC_PARAM : _ID _ATRIB EXPRESSION {}
+           ;
+
+FUNCTION_CALL : _ID '(' FUNC_PARAMS ')' { 
+                                            DEBUG(cout << "F -> _ID ( EXPRESSION )" << endl);
+                                            DEBUG(cout << "   " << $1 << endl);
+                                            DEBUG(cout << "   " << $3 << endl);
+                                            $$.v = gera_nome_variavel( tf[$1.v].t );
+                                            $$.c = $3.c + "  " + $$.v + " = " + $1.v + "( " + $3.v + " );\n"; 
+                                            $$.t = tf[$1.v].t; 
+                                         }
+              | _ID '(' ')'
+              ;
+
 F : _ID ARRAYS            { 
-                            DEBUG(cout << "F:" << endl);
+                            DEBUG(cout << "F -> _ID ARRAYS" << endl);
+                            DEBUG(cout << "   " << $1 << endl); 
+                            DEBUG(cout << "   " << $2 << endl); 
+                            DEBUG(cout << "   " << $$ << endl);
 
-                            DEBUG(cout << " BEGIN:" << endl); 
-                            DEBUG(cout << "   _ID = " << $1 << endl); 
-                            DEBUG(cout << "   ARRAYS = " << $2 << endl); 
-                            DEBUG(cout << "   SAIDA = " << $$ << endl);
-
-                            busca_tipo_da_variavel( $$, $1 );
+                            busca_tipo_da_variavel( $$, $1.v );
                             string temp = gera_nome_variavel($$.t);
                             if ($$.t.nome == String.nome) {
                               $$.c = "strncpy(" + temp + ", " + $$.v + trata_acesso_var($2.t.dim, $$.t.dim) + ", " + toString($$.t.dim[0].fim) + ");\n";
@@ -633,43 +712,37 @@ F : _ID ARRAYS            {
                               $$.c = temp + " = " + $$.v + trata_acesso_var($2.t.dim, $$.t.dim) + ";\n";
                             }
                             $$.v = temp;
-
-                            DEBUG(cout << " AFTER:" << endl); 
-                            DEBUG(cout << "   _ID = " << $1 << endl); 
-                            DEBUG(cout << "   ARRAYS = " << $2 << endl); 
-                            DEBUG(cout << "   SAIDA = " << $$ << endl);
                           }
   | CTE_VAL               { $$ = $1; }
   | '(' EXPRESSION ')'    { $$ = $2; }
-  | _ID '(' EXPRESSIONS ')'   { $$.v = gera_nome_variavel( tf[$1.v] );
-                               $$.c = $3.c +
-                               "  " + $$.v + " = " + $1.v + "( " + $3.v + " );\n"; 
-                               $$.t = tf[$1.v]; }
+  | FUNCTION_CALL         { $$ = $1; }
   ;
   
-EXPRESSIONS : EXPRESSIONS ',' EXPRESSION { $$.c = $1.c + $3.c; $$.v = $1.v + ", " + $3.v; }
+EXPRESSIONS : EXPRESSIONS ',' EXPRESSION  { 
+                                            DEBUG(cout << "EXPRESSIONS -> EXPRESSIONS , EXPRESSION" << endl);
+                                            $$.c = $1.c + $3.c; $$.v = $1.v + ", " + $3.v; 
+                                          }
             | EXPRESSION
             ;
 
-CMD_ATTRIBUTION : LVALUE ARRAYS _ATRIB EXPRESSION { 
-                                                    DEBUG(cout << "Comando de atribuicao:" << endl);
-                                                    DEBUG(cout << " BEFORE:" << endl);
-                                                    DEBUG(cout << "   LVALUE = " << $1 << endl);
-                                                    DEBUG(cout << "   ARRAYS = " << $2 << endl);
-                                                    DEBUG(cout << "   E = " << $4 << endl);
+CMD_ATTRIBUTION : LVALUE ARRAYS _ATRIB EXPRESSION  { 
+                       
+                                                  DEBUG(cout << "CMD_ATTRIBUTION -> LVALUE ARRAYS _ATRIB EXPRESION" << endl); 
+                                                  DEBUG(cout << "   " << $1 << endl);
+                                                  DEBUG(cout << "   " << $2 << endl);
+                                                  DEBUG(cout << "   " << $3 << endl);
 
-                                                    $1.t.acc = $2.t.dim;
-                                                    gera_codigo_atribuicao( $$, $1, $4 ); 
-
-                                                    DEBUG(cout << " AFTER:" << endl);
-                                                    DEBUG(cout << "   LVALUE = " << $1 << endl);
-                                                    DEBUG(cout << "   ARRAYS = " << $2 << endl);
-                                                    DEBUG(cout << "   E = " << $4 << endl);
-
-                                                  }
+                                                  $$.v = $1.v;
+                                                  $1.t.acc = $2.t.dim;
+                                                  gera_codigo_atribuicao( $$, $1, $4 ); 
+                                                }
 				        ;
             
-LVALUE : _ID { busca_tipo_da_variavel( $$, $1 ); }
+LVALUE : _ID  { 
+                DEBUG(cout << "LVALUE -> _ID" << endl);
+                DEBUG(cout << "   " << $1 << endl);
+                busca_tipo_da_variavel( $$, $1.v ); 
+              }
        ; 
 
 CMD_RETURN : _RETURN EXPRESSION { $$.c = $2.c + "  return " + $2.v + ";"; }
