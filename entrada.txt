@@ -18,9 +18,24 @@ sum integer x, integer y: integer{
     <= x + y;
 }
 
+mdc integer a, integer b: integer
+{
+  local integer resto;
+  while b > 0 :
+  {
+    resto = a % b;
+    a = b;
+    b = resto;
+  }
+  <= a;
+}
+
 main : {
 
+	a = "";
 	a = "hello" + ", world " + " I'm here!";
+	write("a = ");
+	writeln(a);
 
 	locals {
 	    integer i = 0;
@@ -63,11 +78,24 @@ main : {
     write("x + y  = ");
     writeln(z);
     
+    z = 7;
+    #if z == 7:
+    #  writeln("Z e diferente de 7!");
+    
     writeln("Insira um numero inteiro:");
     readln(x);
     write("O valor digitado foi: ");
     writeln(x);
     
+    writeln("Insira outro numero inteiro:");
+    readln(y);
+    write("O valor digitado foi: ");
+    writeln(y);
+
+    z = mdc(x, y);
+
+    write("O MDC dos dois numeros e: ");
+    writeln(z); 
     
     if z < 7 :
     {
@@ -94,6 +122,4 @@ main : {
 		writeln(i);
 	}
 
-	write("a = ");
-	#writeln(a);
 }

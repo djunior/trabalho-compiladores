@@ -374,13 +374,14 @@ void copia_delimitadores_array( Atributo& ss,
 
 %token _ID _PROGRAM _MAIN _WRITELN _WRITE _READLN _READ _VAR _IF _ELSE _WHILE
 %token _FOR _ATRIB _RETURN _FUNCTION _GLOBAL _GLOBALS _LOCAL _LOCALS
+//%token _DIFF _EQUAL
 %token _INTEGER _STRING _BOOLEAN _FLOAT
 
 %token _CTE_STRING _CTE_INTEGER _CTE_TRUE _CTE_FALSE _CTE_FLOAT
 
-%nonassoc '>' '<' '='
+%nonassoc '>' '<' "==" '=' "!="
 %left '+' '-'
-%left '*' '/'
+%left '*' '/' '%'
 
 %start S
 
@@ -605,10 +606,14 @@ EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 );
 		       | EXPRESSION '-' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		       | EXPRESSION '*' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		       | EXPRESSION '/' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
-		       | EXPRESSION '>' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       | EXPRESSION '>'  EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		       | EXPRESSION '<' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       | EXPRESSION '%' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       //| EXPRESSION "!=" EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       //| EXPRESSION "==" EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		       | F { $$ = $1; }
 		       ; 
+
 
 CTE_VAL : _CTE_STRING  { $$ = $1; $$.t = String;  }
         | _CTE_INTEGER { $$ = $1; $$.t = Integer; }
@@ -709,7 +714,8 @@ void inicializa_tabela_de_resultado_de_operacoes() {
   map< string, Tipo > r;
   
   // OBS: a ordem é muito importante!!  
-  r[par(Integer, Integer)] = Integer;    
+  r[par(Integer, Integer)] = Integer;   
+  tro[ "%" ] = r; 
   r[par(Integer, Float)] = Float;    
   r[par(Integer, Double)] = Double;    
   r[par(Float, Integer)] = Float;    
@@ -743,8 +749,10 @@ void inicializa_tabela_de_resultado_de_operacoes() {
   r[par(Double, Double)] = Boolean;    
   r[par(Boolean, Boolean)] = Boolean;
   
-  tro[ "<" ] = r; 
-  tro[ ">" ] = r; 
+  tro[ "<" ] = r;
+  tro[ ">" ] = r;
+  tro[ "!=" ] = r; 
+  tro[ "==" ] = r;  
   
 }
 
