@@ -12,3 +12,8 @@ String:
 ./trabalho-compiladores < exemploString.dm > exemploString.cc
 g++ -o exemploString exemploString.cc
 ./exemploString
+
+Fatorial:
+./trabalho-compiladores < exemploFatorial.dm > exemploFatorial.cc
+g++ -o exemploFatorial exemploFatorial.cc
+./exemploFatorial

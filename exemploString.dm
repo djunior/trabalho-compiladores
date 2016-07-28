@@ -1,4 +1,4 @@
-program Entrada;
+program ExemploString;
 
 globals {
 	string a;

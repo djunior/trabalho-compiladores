@@ -1,4 +1,4 @@
-program Entrada;
+program ExemploMDC;
 
 mdc integer a, integer b: integer
 {
