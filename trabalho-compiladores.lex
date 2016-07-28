@@ -65,6 +65,9 @@ void trata_folha();
 {LOCALS}	{ trata_folha(); return _LOCALS; }
 {WHILE}		{ trata_folha(); return _WHILE; }
 
+"and"		{ trata_folha(); yylval.v = "&&";return _AND; }
+"or"		{ trata_folha(); yylval.v = "||"; return _OR; }
+
 {STRING} 	{ trata_folha(); return _STRING; }
 {INTEGER} 	{ trata_folha(); return _INTEGER; }
 {BOOLEAN}	{ trata_folha(); return _BOOLEAN; }

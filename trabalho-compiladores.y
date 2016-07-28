@@ -387,7 +387,7 @@ void copia_delimitadores_array( Atributo& ss,
 
 %token _CTE_STRING _CTE_INTEGER _CTE_TRUE _CTE_FALSE _CTE_FLOAT
 
-%nonassoc '>' '<' '=' _NEQUAL _EQUAL
+%nonassoc '>' '<' '=' _NEQUAL _EQUAL _AND _OR
 %left '+' '-'
 %left '*' '/' '%'
 
@@ -689,6 +689,8 @@ EXPRESSION : EXPRESSION '+' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 );
 		       | EXPRESSION '%' EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		       | EXPRESSION _NEQUAL EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		       | EXPRESSION _EQUAL EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       | EXPRESSION _AND EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
+		       | EXPRESSION _OR EXPRESSION { gera_codigo_operador( $$, $1, $2, $3 ); }
 		       | F { $$ = $1; }
 		       ; 
 
@@ -900,6 +902,8 @@ void inicializa_tabela_de_resultado_de_operacoes() {
   tro[ ">" ] = r;
   tro[ "!=" ] = r; 
   tro[ "==" ] = r;  
+  tro[ "&&" ] = r;
+  tro[ "||" ] = r;
 
   r.clear();
   

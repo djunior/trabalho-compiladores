@@ -82,7 +82,7 @@ main : {
 
 	x = x + 3;
 
-    if x > 3 :
+    if x > 3 and x < 1000:
     {
 	  imprime_int(msg = "x = ",i = x);
     }
