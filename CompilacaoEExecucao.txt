@@ -1,0 +1,11 @@
+HelloWorld:
+./trabalho-compiladores < helloWorld.dm > helloWorld.cc
+g++ -o helloWorld helloWorld.cc
+./helloWorld
+
+MDC:
+./trabalho-compiladores < exemploMDC.dm > exemploMDC.cc
+g++ -o exemploMDC exemploMDC.cc
+./exemploMDC
+
+
