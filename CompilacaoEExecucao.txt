@@ -8,4 +8,7 @@ MDC:
 g++ -o exemploMDC exemploMDC.cc
 ./exemploMDC
 
-
+String:
+./trabalho-compiladores < exemploString.dm > exemploString.cc
+g++ -o exemploString exemploString.cc
+./exemploString
