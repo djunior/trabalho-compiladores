@@ -1,5 +1,5 @@
 Componentes do trabalho:
-David Esteva Britto Junior
+David Estevam de Britto Junior
 Marcos Paulo Moraes
 
 ============================
