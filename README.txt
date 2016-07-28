@@ -1,3 +1,9 @@
+Componentes do trabalho:
+David Esteva Britto Junior
+Marcos Paulo Moraes
+
+============================
+
 Breve explicação da sintaxe:
 
 Comentários são iniciados por #
