@@ -38,8 +38,9 @@ Tipo Char =    { "char", "char", "c", false };
 struct Atributo {
   string v, c;
   Tipo t;
-  vector<string> lst;
-  vector<string> lst_temp; // Usado em FUNCTION_CALL
+  vector<string> lst; // Usado em acesso a arrays
+  vector<string> params; // Usando em FUNCTION_CALL
+  vector<string> params_temp; // Usado em FUNCTION_CALL
 }; 
 
 #define YYSTYPE Atributo
@@ -105,7 +106,8 @@ ostream& operator << ( ostream& o, const Atributo& st ) {
   o << "v = " << st.v;
   o << ", c = " << st.c;
   o << ", lst = " << st.lst;
-  o << ", lst_temp = " << st.lst_temp;
+  o << ", params = " << st.params;
+  o << ", lst_temp = " << st.params_temp;
   o << ", t = " << st.t;
   o << "}";
   return o;
@@ -460,8 +462,8 @@ FUNCTION : FUNCTION_NAME
                                                 escopo_local = false; 
                                                 $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $4.c + "\n}\n"; 
                                               }
-		     | FUNCTION_NAME ':' T { tf[$1.v].t = $3.t; } BLOCK { escopo_local = false; $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $5.c + "\n}\n"; }
-		     | FUNCTION_NAME ':' BLOCK { escopo_local = false; $$.c = "void " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $3.c + "\n}\n"; }
+		     | FUNCTION_NAME ':' T { tf[$1.v].t = $3.t; } BLOCK { escopo_local = false; symbol_table_stack.pop_back(); $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $5.c + "\n}\n"; }
+		     | FUNCTION_NAME ':' BLOCK { escopo_local = false; symbol_table_stack.pop_back(); $$.c = "void " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $3.c + "\n}\n"; }
          ;
 
 PARAMETERS : PARAMETERS ',' PARAMETER {
@@ -703,16 +705,16 @@ FUNC_PARAMS : FUNC_PARAMS ',' FUNC_PARAM {
                                             DEBUG(cout << "   $1 = " << $1 << endl);
                                             DEBUG(cout << "   $3 = " << $3 << endl);
                                             $$.c = $1.c + $3.c; 
-                                            $1.lst.push_back($3.v);
-                                            $1.lst_temp.push_back($3.lst_temp.back());
-                                            $$.lst = $1.lst;
-                                            $$.lst_temp = $1.lst_temp;
+                                            $1.params.push_back($3.v);
+                                            $1.params_temp.push_back($3.params_temp.back());
+                                            $$.params = $1.params;
+                                            $$.params_temp = $1.params_temp;
                                           }
             | FUNC_PARAM  { 
                             DEBUG(cout << "FUNC_PARAMS -> FUNC_PARAM" << endl);
                             DEBUG(cout << "   " << $1 << endl);
                             $$.c = $1.c; 
-                            $$.lst.push_back($1.v); 
+                            $$.params.push_back($1.v); 
                             DEBUG(cout << "   saida = " << $$ << endl);
                           }
             ;
@@ -730,7 +732,7 @@ FUNC_PARAM : _ID _ATRIB EXPRESSION  {
                                         $$.c = $3.c + "  " + temp_name + " = " + $3.v + ";\n"; 
                                       }
                                       $$.v = $1.v;
-                                      $$.lst_temp.push_back(temp_name);
+                                      $$.params_temp.push_back(temp_name);
 
                                       DEBUG(cout << "   saida = " << $$ << endl);
                                     }
@@ -741,16 +743,16 @@ FUNCTION_CALL : _ID '(' FUNC_PARAMS ')' {
                                             DEBUG(cout << "   " << $1 << endl);
                                             DEBUG(cout << "   " << $3 << endl);
 
-                                            string params = "";
-                                            vector<string> params_ordered($3.lst.size());
+                                            string p = "";
+                                            vector<string> params_ordered($3.params.size());
                                             
-                                            for (int i = 0; i < $3.lst.size(); i++) {
-                                              int indice = tf[$1.v].ordemParams[$3.lst[i]];
-                                              params_ordered[indice] = $3.lst_temp[i];
+                                            for (int i = 0; i < $3.params.size(); i++) {
+                                              int indice = tf[$1.v].ordemParams[$3.params[i]];
+                                              params_ordered[indice] = $3.params_temp[i];
                                             }
 
-                                            for (int i = 0; i < $3.lst.size(); i++) {
-                                              params += (params == "" ? "" : ",") + params_ordered[i];
+                                            for (int i = 0; i < $3.params.size(); i++) {
+                                              p += (p == "" ? "" : ",") + params_ordered[i];
                                             }
                                             
                                             $$.c = $3.c + "  ";
@@ -759,9 +761,16 @@ FUNCTION_CALL : _ID '(' FUNC_PARAMS ')' {
                                               $$.c += $$.v + " = ";
                                               $$.t = tf[$1.v].t; 
                                             }
-                                            $$.c += $1.v + "( " + params + " );\n";
+                                            $$.c += $1.v + "( " + p + " );\n";
                                          }
-              | _ID '(' ')'
+              | _ID '(' ')' {
+                              if (tf[$1.v].t.nome != "") {
+                                $$.v = gera_nome_variavel( tf[$1.v].t );
+                                $$.c += $$.v + " = ";
+                                $$.t = tf[$1.v].t; 
+                              }
+                              $$.c = $1.v + "( );\n";
+                            }
               ;
 
 F : _ID ACCESS_ARRAYS     { 
@@ -793,13 +802,6 @@ F : _ID ACCESS_ARRAYS     {
   | '(' EXPRESSION ')'    { $$ = $2; }
   | FUNCTION_CALL         { $$ = $1; }
   ;
-  
-EXPRESSIONS : EXPRESSIONS ',' EXPRESSION  { 
-                                            DEBUG(cout << "EXPRESSIONS -> EXPRESSIONS , EXPRESSION" << endl);
-                                            $$.c = $1.c + $3.c; $$.v = $1.v + ", " + $3.v; 
-                                          }
-            | EXPRESSION
-            ;
 
 CMD_ATTRIBUTION : LVALUE ACCESS_ARRAYS _ATRIB EXPRESSION   { 
                                                       DEBUG(cout << "CMD_ATTRIBUTION -> LVALUE ACCESS_ARRAYS _ATRIB EXPRESION" << endl); 

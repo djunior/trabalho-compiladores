@@ -49,7 +49,11 @@ fat integer x: integer {
 	if x == 1:
 		<= 1;
 
-	<= x*fat(x - 1);
+	<= x*fat(x = x - 1);
+}
+
+break_line : {
+	writeln("");
 }
 
 main : {
@@ -57,9 +61,9 @@ main : {
 	a = "";
 	a = "hello" + ", world " + " I'm here!";
 
-	imprime_str("a = ",a);
+	imprime_str(msg = "a = ", m = a);
 
-	imprime_int("fatorial de 6 = ",fat(6));
+	imprime_int(msg = "fatorial de 6 = ", i = fat(x = 6));
 
 	locals {
 	    integer i = 0;
@@ -72,20 +76,22 @@ main : {
     write("O valor de num é = ");
     writeln(num);
     
-    imprime_float("x + num = ",x+num);
+    imprime_float(msg = "x + num = ",f = x+num);
     
+	break_line();
+
 	x = x + 3;
 
     if x > 3 :
     {
-	  imprime_int("x = ",x);
+	  imprime_int(msg = "x = ",i = x);
     }
     else
     {
       writeln("x < 3");
     }
 
-	imprime_int("y = ",y);
+	imprime_int(msg = "y = ", i = y);
 
     x = 8;
 
@@ -95,14 +101,14 @@ main : {
     	writeln("X é diferente de 8!");
     }
 
-    x = decrem ( x );
-    imprime_int("x decrem = ",x);
+    x = decrem ( x = x );
+    imprime_int(msg = "x decrem = ",i = x);
     
-    x = inc ( x );
-    imprime_int("x inc = ",x);
+    x = inc ( x = x );
+    imprime_int(msg = "x inc = ",i = x);
     
-    z = sum ( x, y );
-    imprime_int("x + y  = ",z);
+    z = sum ( x = x, y = y );
+    imprime_int(msg = "x + y  = ",i = z);
     
     z = 7;
     #if z == 7:
@@ -111,19 +117,19 @@ main : {
     writeln("Insira um numero inteiro:");
     readln(x);
 
-    imprime_int("O valor digitado foi: ",x);
+    imprime_int(msg = "O valor digitado foi: ",i = x);
     
     writeln("Insira outro numero inteiro:");
     readln(y);
-    imprime_int("O valor digitado foi: ",y);
+    imprime_int(msg = "O valor digitado foi: ",i = y);
 
-    z = mdc(x, y);
+    z = mdc(a = x,b = y);
 
-    imprime_int("O MDC dos dois numeros e: ",z);
+    imprime_int(msg = "O MDC dos dois numeros e: ",i = z);
     
     if z < 7 :
     {
-	  imprime_int("z = ",z);
+	  imprime_int(msg  = "z = ",i = z);
 	}
 	
 	writeln("Contagem de 1 a 7 com while");
@@ -134,13 +140,13 @@ main : {
 	  	integer k = 1;
 	  }
 	  j = i;
-	  imprime_int("i = ",j+k);
+	  imprime_int(msg = "i = ",i = j+k);
 	  i = j + k;
 	}
 
 	writeln("Contagem de 0 a 9 com for");
 	for i = 0, i < 10, i = i + 1: {
-		imprime_int(" i = ",i);
+		imprime_int(msg = " i = ",i = i);
 	}
 
 }
