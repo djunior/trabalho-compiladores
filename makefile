@@ -21,8 +21,8 @@ fatorial: trabalho-compiladores-linux exemploFatorial.dm
 	g++ -o exemploFatorial exemploFatorial.cc
 	./exemploFatorial
 
-matriz: trabalho-compiladores-linux matriz.dm
-	./trabalho-compiladores < matriz.dm > exemploMatriz.cc
+matriz: trabalho-compiladores-linux exemploMatriz.dm
+	./trabalho-compiladores < exemploMatriz.dm > exemploMatriz.cc
 	g++ -o exemploMatriz exemploMatriz.cc
 	./exemploMatriz
 
