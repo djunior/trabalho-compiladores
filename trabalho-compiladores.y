@@ -474,8 +474,8 @@ FUNCTION : FUNCTION_NAME
                                                 escopo_local = false; 
                                                 $$.c = "void " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $4.c + "\n}\n"; 
                                               }
-		     | FUNCTION_NAME ':' T { tf[$1.v].t = $3.t; } BLOCK { escopo_local = false; symbol_table_stack.pop_back(); $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $5.c + "\n}\n"; }
-		     | FUNCTION_NAME ':' BLOCK { escopo_local = false; symbol_table_stack.pop_back(); $$.c = "void " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $3.c + "\n}\n"; }
+		     | FUNCTION_NAME ':' T { tf[$1.v].t = $3.t; } BLOCK { $$.c = $3.t.decl + " " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $5.c + "\n}\n"; escopo_local = false; symbol_table_stack.pop_back(); }
+		     | FUNCTION_NAME ':' BLOCK { $$.c = "void " + $1.v + "( )" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $3.c + "\n}\n"; escopo_local = false; symbol_table_stack.pop_back(); }
          ;
 
 PARAMETERS : PARAMETERS ',' PARAMETER {
@@ -773,21 +773,11 @@ FUNCTION_CALL : _ID '(' FUNC_PARAMS ')' {
                                             string str_return = "";
                                             if (tf[$1.v].t.nome != "") {
                                               $$.v = gera_nome_variavel( tf[$1.v].t );
+                                              $$.c += $$.v + " = ";
                                               $$.t = tf[$1.v].t; 
-
-                                              if ($$.t.nome == String.nome) {
-                                                str_return = "" ;
-                                              } else {
-                                                str_return = $$.v + " = ";
-                                              }
-                                              
                                             }
 
-                                            if ($$.t.nome == String.nome) {
-                                              $$.c += "strcpy(" + $$.v + ", " + $1.v + "( " + p + " )" + ");\n";
-                                            } else {
-                                              $$.c += $1.v + "( " + p + " );\n";
-                                            }
+                                            $$.c += $1.v + "( " + p + " );\n";
                                          }
               | _ID '(' ')' {
                               if (tf[$1.v].t.nome != "") {

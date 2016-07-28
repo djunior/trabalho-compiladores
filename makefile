@@ -1,4 +1,4 @@
-all: mac
+all: helloworld
 
 clean:
 	rm -f lex.yy.c
@@ -6,8 +6,33 @@ clean:
 	rm -f y.output
 	rm -f trabalho-compiladores
 
+mdc: trabalho-compiladores-linux exemploMDC.dm
+	./trabalho-compiladores < exemploMDC.dm > exemploMDC.cc
+	g++ -o exemploMDC exemploMDC.cc
+	./exemploMDC
+
+string: trabalho-compiladores-linux exemploString.dm
+	./trabalho-compiladores < exemploString.dm > exemploString.cc
+	g++ -o exemploString exemploString.cc
+	./exemploString
+
+fatorial: trabalho-compiladores-linux exemploFatorial.dm
+	./trabalho-compiladores < exemploFatorial.dm > exemploFatorial.cc
+	g++ -o exemploFatorial exemploFatorial.cc
+	./exemploFatorial
+
+matriz: trabalho-compiladores-linux exemploMatriz.dm
+	./trabalho-compiladores < exemploMatriz.dm > exemploMatriz.cc
+	g++ -o exemploMatriz exemploMatriz.cc
+	./exemploMatriz
+
+helloworld: trabalho-compiladores-linux helloWorld.dm
+	./trabalho-compiladores < helloWorld.dm > helloWorld.cc
+	g++ -o helloWorld helloWorld.cc
+	./helloWorld
+
 mac: gabarito-mac trabalho-compiladores-mac entrada.txt
-	./trabalho-compiladores < entrada.txt > saida.cc
+	./trabalho-compiladores < matriz.dm > saida.cc
 	gabarito/gabarito < saida.cc
 	g++ -o saida saida.cc
 	./saida
@@ -22,8 +47,8 @@ gabarito-mac:
 gabarito-linux:
 	cd gabarito && make linux
 
-linux: trabalho-compiladores-linux entrada.txt
-	./trabalho-compiladores < entrada.txt
+linux: trabalho-compiladores-linux
+	./trabalho-compiladores < entrada.txt > saida.cc
 
 linux-debug: trabalho-compiladores-linux-debug entrada.txt
 	./trabalho-compiladores < entrada.txt
