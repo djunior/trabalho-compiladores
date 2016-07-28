@@ -5,6 +5,12 @@ clean:
 	rm -f y.tab.c
 	rm -f y.output
 	rm -f trabalho-compiladores
+	rm exemploMDC
+	rm exemploString
+	rm exemploFatorial
+	rm exemploMatriz
+	rm helloWorld
+	rm *.cc
 
 mdc: trabalho-compiladores-linux exemploMDC.dm
 	./trabalho-compiladores < exemploMDC.dm > exemploMDC.cc
@@ -31,21 +37,14 @@ helloworld: trabalho-compiladores-linux helloWorld.dm
 	g++ -o helloWorld helloWorld.cc
 	./helloWorld
 
-mac: gabarito-mac trabalho-compiladores-mac entrada.txt
+mac: trabalho-compiladores-mac entrada.txt
 	./trabalho-compiladores < matriz.dm > saida.cc
-	gabarito/gabarito < saida.cc
 	g++ -o saida saida.cc
 	./saida
 
 mac-debug: trabalho-compiladores-mac-debug entrada.txt
 	./trabalho-compiladores < entrada.txt > saida.cc
 	cat saida.cc
-
-gabarito-mac:
-	cd gabarito && make mac
-
-gabarito-linux:
-	cd gabarito && make linux
 
 linux: trabalho-compiladores-linux
 	./trabalho-compiladores < entrada.txt > saida.cc
