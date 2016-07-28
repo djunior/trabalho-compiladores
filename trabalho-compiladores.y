@@ -292,16 +292,19 @@ void gera_codigo_acesso_array(Atributo& ss, const Atributo& array) {
     ss.c = array.c;
 
     string temp = gera_nome_variavel(Integer);
-    string calculo_indice = "";
+    string calculo_indice = temp + " = 0;\n";
     for (int i = 0; i < array.lst.size(); i++) {
       int multiplicador = 1;
       for (int j = i+1; j < ss.t.dim.size(); j++) {
         int size = ss.t.dim[j].fim - ss.t.dim[j].inicio + 1;
         multiplicador *= size;
       }
-      calculo_indice += (calculo_indice == "" ? "" : " + ") + array.lst[i] + " * " + toString(multiplicador);
+      string temp_mult = gera_nome_variavel(Integer);
+      string mult = temp_mult + " = " + array.lst[i] + " * " + toString(multiplicador);
+      string sum = temp + " = " + temp + " + " + temp_mult; 
+      calculo_indice += mult + ";\n" + sum + ";\n";
     }
-    ss.c += temp + " = " + calculo_indice + ";\n";
+    ss.c += calculo_indice;
     ss.v += "[" + temp + "]";
 }
 
@@ -346,7 +349,15 @@ void gera_codigo_operador( Atributo& ss,
       
       } else {
 
-        ss.c = esq.c + dir.c + "  " + ss.v + " = " + esq.v + " " + op.v + " " + dir.v + ";\n";
+        Atributo t1 = esq;
+        Atributo t2 = dir;
+        if (esq.lst.size() > 0)
+          gera_codigo_acesso_array(t1,esq);
+
+        if (dir.lst.size() > 0)
+          gera_codigo_acesso_array(t2,dir);          
+
+        ss.c = t1.c + t2.c + "  " + ss.v + " = " + t1.v + " " + op.v + " " + t2.v + ";\n";
 
       }
 
@@ -446,6 +457,7 @@ FUNCTION : FUNCTION_NAME
                                           tf[$1.v].params[$2.lst[i]] = a.t;
                                           tf[$1.v].ordemParams[$2.lst[i]] = i;
                                         }
+
                                         $$.c = $4.t.decl + " " + $1.v + "(" + $2.c + ")" + "\n{\n" + declara_var_temp(temp_local) + gera_declaracao_variaveis() + $6.c + "\n}\n"; 
                                         symbol_table_stack.pop_back();
                                         escopo_local = false;
@@ -758,12 +770,24 @@ FUNCTION_CALL : _ID '(' FUNC_PARAMS ')' {
                                             }
                                             
                                             $$.c = $3.c + "  ";
+                                            string str_return = "";
                                             if (tf[$1.v].t.nome != "") {
                                               $$.v = gera_nome_variavel( tf[$1.v].t );
-                                              $$.c += $$.v + " = ";
                                               $$.t = tf[$1.v].t; 
+
+                                              if ($$.t.nome == String.nome) {
+                                                str_return = "" ;
+                                              } else {
+                                                str_return = $$.v + " = ";
+                                              }
+                                              
                                             }
-                                            $$.c += $1.v + "( " + p + " );\n";
+
+                                            if ($$.t.nome == String.nome) {
+                                              $$.c += "strcpy(" + $$.v + ", " + $1.v + "( " + p + " )" + ");\n";
+                                            } else {
+                                              $$.c += $1.v + "( " + p + " );\n";
+                                            }
                                          }
               | _ID '(' ')' {
                               if (tf[$1.v].t.nome != "") {
@@ -901,7 +925,12 @@ void inicializa_tabela_de_resultado_de_operacoes() {
   tro[ "<" ] = r;
   tro[ ">" ] = r;
   tro[ "!=" ] = r; 
-  tro[ "==" ] = r;  
+  tro[ "==" ] = r; 
+
+  r.clear();
+  r[par(Boolean,Boolean)] = Boolean;
+
+
   tro[ "&&" ] = r;
   tro[ "||" ] = r;
 
