@@ -1,3 +1,23 @@
+Os códigos de exemplo podem ser compilados e executados usando o comando make:
+
+HelloWorld: 
+make helloworld
+
+MDC: 
+make mdc
+
+String: 
+make string
+
+Fatorial: 
+make fatorial
+
+Matriz: 
+make matriz
+
+Ou podem ser compilados manualmente, após a execução de um comando make. 
+Seguem os comandos para compilar cada exemplo:
+
 HelloWorld:
 ./trabalho-compiladores < helloWorld.dm > helloWorld.cc
 g++ -o helloWorld helloWorld.cc
@@ -17,3 +37,8 @@ Fatorial:
 ./trabalho-compiladores < exemploFatorial.dm > exemploFatorial.cc
 g++ -o exemploFatorial exemploFatorial.cc
 ./exemploFatorial
+
+Matriz:
+./trabalho-compiladores < exemploMatriz.dm > exemploMatriz.cc
+g++ -o exemploMatriz exemploMatriz.cc
+./exemploMatriz
